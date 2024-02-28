@@ -8,7 +8,7 @@ public class RaftNode
     private Guid VotedFor { get; set; }
     public Guid Name { get; set; }
 
-    private Random Random = new Random(12);
+    private Random Random;
 
     private List<RaftNode> OtherNodes { get; set; }
 
@@ -22,8 +22,16 @@ public class RaftNode
 
     private int TimeFactor = 1;
 
-    public RaftNode(List<RaftNode> otherNodes, int timeFactor = 1)
+    public RaftNode(List<RaftNode> otherNodes, int timeFactor = 1, Random? seeded = null)
     {
+        if (seeded != null)
+        {
+            Random = seeded;
+        }
+        else
+        {
+            Random = new Random();
+        }
         Term = 0;
         VotedFor = Guid.Empty;
         State = RaftNodeState.Follower;

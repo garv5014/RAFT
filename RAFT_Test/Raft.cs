@@ -1,5 +1,5 @@
 using RAFT;
-
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 namespace RAFT_Test;
 
 public class RaftTestsBase
@@ -9,7 +9,7 @@ public class RaftTestsBase
     {
         for (int i = 0; i < numberOfNodes; i++)
         {
-            var node = new RaftNode(testNodes, timeDelay);
+            var node = new RaftNode(testNodes, timeDelay, new Random(0));
             testNodes.Add(node);
         }
     }
@@ -241,6 +241,65 @@ public class BasicLogReplication : RaftTestsBase
 
 
         await Task.Delay(1000);
+
+        foreach (var node in testNodes.Where(n => !IsLeader(n)))
+        {
+            Assert.Equal(leader.Term, node.Term);
+        }
+    }
+}
+
+public class AllLogReplication : RaftTestsBase
+{
+    public AllLogReplication() : base(3)
+    {
+    }
+
+    [Fact]
+    public async Task LogReplicationOccursAcrossAllNodes()
+    {
+        StartNodes();
+        await WaitForLeaderElected();
+
+        var leader = testNodes.FirstOrDefault(n => IsLeader(n));
+        Assert.NotNull(leader);
+
+        int originalTerm = leader.Term;
+        leader.Term = originalTerm + 1;
+
+        await Task.Delay(1000);
+
+        foreach (var node in testNodes.Where(n => n != leader))
+        {
+            Assert.Equal(leader.Term, node.Term);
+        }
+    }
+}
+
+public class DeadNodeNoUpdate : RaftTestsBase
+{
+    public DeadNodeNoUpdate() : base(3)
+    {
+    }
+
+    [Fact]
+    public async void NoUpdateOnHeartBeatToDeadNode()
+    {
+        StartNodes();
+        await WaitForLeaderElected();
+        var deadNode = testNodes.FirstOrDefault(n => !IsLeader(n));
+        Assert.NotNull(deadNode);
+
+        deadNode.KillNode();
+
+        var leader = testNodes.FirstOrDefault(n => IsLeader(n));
+        Assert.NotNull(leader);
+
+        int originalTerm = leader.Term;
+        leader.Term = originalTerm + 1;
+
+        await Task.Delay(100);
+
 
         foreach (var node in testNodes.Where(n => !IsLeader(n)))
         {
