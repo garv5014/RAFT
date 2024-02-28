@@ -4,11 +4,11 @@ public class RaftNode
 {
     private RaftNodeState State = RaftNodeState.Follower;
 
-    private int Term;
+    public int Term;
     private Guid VotedFor { get; set; }
     public Guid Name { get; set; }
 
-    private Random Random = new Random();
+    private Random Random = new Random(12);
 
     private List<RaftNode> OtherNodes { get; set; }
 
@@ -20,7 +20,9 @@ public class RaftNode
 
     private bool IsAlive;
 
-    public RaftNode(List<RaftNode> otherNodes)
+    private int TimeFactor = 1;
+
+    public RaftNode(List<RaftNode> otherNodes, int timeFactor = 1)
     {
         Term = 0;
         VotedFor = Guid.Empty;
@@ -30,14 +32,24 @@ public class RaftNode
         OtherNodes = otherNodes;
         UpdateElectionTimer();
         IsAlive = false;
+        TimeFactor = timeFactor;
     }
 
     private void UpdateElectionTimer()
     {
-        ElectionTimeout = Random.Next(150, 300);
+        ElectionTimeout = Random.Next(150, 300) * TimeFactor;
         LastHeartbeat = DateTime.UtcNow;
     }
 
+    public bool isHealthy()
+    {
+        return IsAlive;
+    }
+
+    public RaftNodeState GetState()
+    {
+        return State;
+    }
     public void Initialize()
     {
         IsAlive = true;
@@ -114,7 +126,7 @@ public class RaftNode
         }).Start();
     }
 
-    private void StartElection()
+    public void StartElection()
     {
         State = RaftNodeState.Candidate;
         Term++;
@@ -139,7 +151,7 @@ public class RaftNode
                 }).Start();
             }
         }
-        if (votes > OtherNodes.Count / 2)
+        if (votes >= Math.Floor((double)(OtherNodes.Count / 2)))
         {
             State = RaftNodeState.Leader;
             WriteToLog($"Node {Name} became leader for term {Term}");
@@ -147,6 +159,7 @@ public class RaftNode
         }
         else
         {
+            votes = 0;
             State = RaftNodeState.Follower;
         }
     }
