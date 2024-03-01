@@ -22,6 +22,9 @@ public class RaftNode
 
     private int TimeFactor = 1;
 
+    public Dictionary<string, (string value, int logIndex)> Log = new Dictionary<string, (string, int)>();
+    public Guid MostRecentLeader { get; set; }
+
     public RaftNode(List<RaftNode> otherNodes, int timeFactor = 1, Random? seeded = null)
     {
         if (seeded != null)
@@ -92,6 +95,7 @@ public class RaftNode
             Term = term;
             State = RaftNodeState.Follower;
             LastHeartbeat = DateTime.UtcNow;
+            MostRecentLeader = leaderId; // Update the most recent leader
             WriteToLog($"Received heartbeat from {leaderId}");
         }
     }
@@ -172,6 +176,32 @@ public class RaftNode
         }
     }
 
+    public void AppendEntries(int term, Guid leaderId, List<(string key, string value)> entries)
+    {
+        if (term >= Term)
+        {
+            Term = term;
+            State = RaftNodeState.Follower;
+            LastHeartbeat = DateTime.UtcNow;
+            MostRecentLeader = leaderId;
+
+            foreach (var entry in entries)
+            {
+                if (!Log.ContainsKey(entry.key))
+                {
+                    Log.Add(entry.key, (entry.value, Log.Count));
+                }
+                else
+                {
+                    Log[entry.key] = (entry.value, Log[entry.key].logIndex); // Update if key exists
+                }
+            }
+
+            WriteToLog($"Appended entries from {leaderId}");
+        }
+    }
+
+
     private bool ElectionTimedOut()
     {
         return DateTime.UtcNow - LastHeartbeat > TimeSpan.FromMilliseconds(ElectionTimeout);
@@ -184,11 +214,19 @@ public class RaftNode
         {
             return;
         }
+
+        // Example of deciding what entries to send - this will depend on your application logic
+        List<(string key, string value)> entriesToSend = new List<(string key, string value)>();
+
+        // Determine the entries to send based on the last log index acknowledged by each follower, etc.
+        // This is simplified; in practice, you'd track what each follower has and send them what they need.
+
         foreach (var node in OtherNodes)
         {
             if (node.Name != Name)
             {
-                node.ReceiveHeartbeat(Term, Name);
+                // If there are no new entries, this effectively acts as a heartbeat
+                node.AppendEntries(Term, Name, entriesToSend);
             }
         }
     }
