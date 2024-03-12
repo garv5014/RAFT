@@ -1,0 +1,6 @@
+@Raft_Node_HostAddress = http://localhost:5010
+
+GET {{Raft_Node_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

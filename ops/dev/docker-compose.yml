@@ -1,0 +1,40 @@
+services: 
+    x-raftnode-base: &raftnode_base
+        build: 
+            context: .
+            dockerfile: '../Raft_Node/Dockerfile'
+    
+    x-raftnode-env: &raftnode_env
+        TZ: America/Denver
+
+    raftnode1:
+        << : *raftnode_base
+        container_name: raftnode1
+        environment: 
+            << : *raftnode_env
+
+    raftnode2:
+        << : *raftnode_base
+        container_name: raftnode2
+        environment: 
+            << : *raftnode_env
+
+    raftnode3:
+        << : *raftnode_base
+        container_name: raftnode3
+        environment: 
+            << : *raftnode_env
+            
+    nginx:
+        image: nginx:latest
+        container_name: reverse_proxy
+        volumes:
+          - ./nginx.conf:/etc/nginx/nginx.conf
+        ports:
+          - "5202:80"
+    
+    gateway: 
+        container_name: gateway
+        build: 
+            context: .
+            dockerfile: '../Raft_Gateway/Dockerfile'
