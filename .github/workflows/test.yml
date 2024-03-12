@@ -1,0 +1,16 @@
+name: Dotnet Tests
+
+on:
+  workflow_dispatch:
+  workflow_call:
+jobs:
+    unit-tests:
+        runs-on: [self-hosted]
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v2
+
+        - name: Run Tests in Docker
+          run: |
+              docker build -t raft_test -f ./ops/tests/Dockerfile .
+              docker run -i --rm chat_test dotnet test ./Unit_Test

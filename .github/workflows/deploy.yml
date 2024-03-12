@@ -1,0 +1,29 @@
+name: Deploy Application
+
+env:
+  DUCKDNSTOKEN: ${{ secrets.DUCKDNSTOKEN }}
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  
+jobs: 
+    test:
+        uses: ./.github/workflows/test.yml
+
+    deploy:
+        needs: [test]
+        runs-on: [self-hosted]
+        steps:
+            - name: checkout repo
+              uses: actions/checkout@v3
+
+            - name: redeploy application
+              run: |
+                cd ops/prod
+                docker compose pull
+                docker compose down
+                docker compose build
+                docker compose up -d
