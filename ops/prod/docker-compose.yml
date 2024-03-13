@@ -97,8 +97,8 @@ services:
             # - 3000:3000
         restart: always
         environment:
-            - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
-            - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+            - GF_SECURITY_ADMIN_USER=notadmin
+            - GF_SECURITY_ADMIN_PASSWORD=notpassword
         volumes:
             - ./configs/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/default.yml
             - ./dashboards:/var/lib/grafana/dashboards
