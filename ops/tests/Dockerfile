@@ -3,10 +3,10 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
 COPY *.sln ./
-COPY ../../RAFT/*.csproj ./RAFT/
-COPY ../../RAFT_Gateway/*.csproj ./RAFT_Gateway/
-COPY ../../RAFT_Node/*.csproj ./RAFT_Node/
-COPY ../../RAFT_Test/*.csproj ./RAFT_Test/
+COPY RAFT/*.csproj ./RAFT/
+COPY Raft_Gateway/*.csproj ./Raft_Gateway/
+COPY Raft_Node/*.csproj ./Raft_Node/
+COPY RAFT_Test/*.csproj ./RAFT_Test/
 
 
 
