@@ -37,5 +37,17 @@ namespace Raft_Node.controllers
         {
             return RaftNodeService.ReceiveVoteRequest(term, voteForName);
         }
+
+        [HttpPost("appendEntries")]
+        public void AppendEntries([FromBody] AppendEntriesRequest request)
+        {
+            RaftNodeService.AppendEntries(request);
+        }
+
+        [HttpGet("ReceiveHeartbeat")]
+        public void ReceiveHeartbeat([FromQuery] int term, [FromQuery] Guid leaderId)
+        {
+            RaftNodeService.ReceiveHeartbeat(term, leaderId);
+        }
     }
 }

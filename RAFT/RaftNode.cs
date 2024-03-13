@@ -100,24 +100,6 @@ public class RaftNode
         }
     }
 
-    // Keep track of time out and start election if needed or send heart beats if leader
-    public void Update()
-    {
-        if (!IsAlive)
-        {
-            return;
-        }
-
-        if (DateTime.UtcNow - LastHeartbeat > TimeSpan.FromMilliseconds(ElectionTimeout))
-        {
-            StartElection();
-        }
-        else if (State == RaftNodeState.Leader)
-        {
-            SendHeartbeats();
-        }
-    }
-
     public void MakeTimeoutThread()
     {
         new Thread(() =>
@@ -230,8 +212,6 @@ public class RaftNode
             }
         }
     }
-
-
 
     private void WriteToLog(string entry)
     {

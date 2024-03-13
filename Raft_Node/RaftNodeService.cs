@@ -96,7 +96,7 @@ public class RaftNodeService : BackgroundService
         int votes = 1;
         foreach (var node in otherNodeAddresses)
         {
-            var nodeId = int.Parse(await client.GetStringAsync($"{node}/api/node/identify"));
+            int nodeId = await getIdFromNode(node);
             if (nodeId != options.NodeIdentifier)
             {
                 new Thread(() =>
@@ -126,6 +126,11 @@ public class RaftNodeService : BackgroundService
         }
     }
 
+    private async Task<int> getIdFromNode(string node)
+    {
+        return int.Parse(await client.GetStringAsync($"{node}/api/node/identify"));
+    }
+
     private void WriteToLog(string entry)
     {
         using (var stream = new FileStream(FilePath, FileMode.Append, FileAccess.Write, FileShare.Write))
@@ -141,7 +146,7 @@ public class RaftNodeService : BackgroundService
     }
 
     // send heartbeats to all other nodes
-    private void SendHeartbeats()
+    private async void SendHeartbeats()
     {
         if (!IsAlive)
         {
@@ -156,10 +161,16 @@ public class RaftNodeService : BackgroundService
 
         foreach (var node in otherNodeAddresses)
         {
-            if (node != Name)
+            var nodeId = await getIdFromNode(node);
+            if (nodeId != options.NodeIdentifier)
             {
                 // If there are no new entries, this effectively acts as a heartbeat
-                node.AppendEntries(Term, Name, entriesToSend);
+                await client.PostAsJsonAsync($"{node}/api/node/appendEntries", new AppendEntriesRequest
+                {
+                    Term = Term,
+                    LeaderId = Name,
+                    Entries = entriesToSend
+                });
             }
         }
     }
@@ -182,52 +193,17 @@ public class RaftNodeService : BackgroundService
         WriteToLog($"Did not vote for {candidateId} in term {term}");
         return false;
     }
-    /*
 
-
-    // Receive a heartbeat from a leader 
-    public void ReceiveHeartbeat(int term, Guid leaderId)
+    public void AppendEntries(AppendEntriesRequest req)
     {
-        if (term >= Term)
+        if (req.Term >= Term)
         {
-            Term = term;
+            Term = req.Term;
             State = RaftNodeState.Follower;
             LastHeartbeat = DateTime.UtcNow;
-            MostRecentLeader = leaderId; // Update the most recent leader
-            WriteToLog($"Received heartbeat from {leaderId}");
-        }
-    }
+            MostRecentLeader = req.LeaderId;
 
-    // Keep track of time out and start election if needed or send heart beats if leader
-    public void Update()
-    {
-        if (!IsAlive)
-        {
-            return;
-        }
-
-        if (DateTime.UtcNow - LastHeartbeat > TimeSpan.FromMilliseconds(ElectionTimeout))
-        {
-            StartElection();
-        }
-        else if (State == RaftNodeState.Leader)
-        {
-            SendHeartbeats();
-        }
-    }
-
-
-
-    public void AppendEntries(int term, Guid leaderId, List<(string key, string value)> entries)
-    {
-        if (term >= Term)
-        {
-            Term = term;
-            State = RaftNodeState.Follower;
-            LastHeartbeat = DateTime.UtcNow;
-            MostRecentLeader = leaderId;
-
-            foreach (var entry in entries)
+            foreach (var entry in req.Entries)
             {
                 if (!Log.ContainsKey(entry.key))
                 {
@@ -239,7 +215,19 @@ public class RaftNodeService : BackgroundService
                 }
             }
 
-            WriteToLog($"Appended entries from {leaderId}");
+            WriteToLog($"Appended entries from {req.LeaderId}");
+        }
+    }
+    // Receive a heartbeat from a leader 
+    public void ReceiveHeartbeat(int term, Guid leaderId)
+    {
+        if (term >= Term)
+        {
+            Term = term;
+            State = RaftNodeState.Follower;
+            LastHeartbeat = DateTime.UtcNow;
+            MostRecentLeader = leaderId; // Update the most recent leader
+            WriteToLog($"Received heartbeat from {leaderId}");
         }
     }
 
@@ -255,9 +243,9 @@ public class RaftNodeService : BackgroundService
         IsAlive = true;
     }
 
-    */
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        this.Initialize();
     }
 }
 
