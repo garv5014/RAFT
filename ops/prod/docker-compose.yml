@@ -12,20 +12,20 @@ x-raftnode-env: &raftnode_env
 
 
 services: 
-    garrett_raftnode1:
+    raftnode1:
         <<: *raftnode_base
         container_name: garrett_raftnode1
         environment: 
             <<: *raftnode_env
             node_id: 1
-    garrett_raftnode2:
+    raftnode2:
         <<: *raftnode_base
         container_name: garrett_raftnode2
         environment: 
             <<: *raftnode_env
             node_id: 2
 
-    garrett_raftnode3:
+    raftnode3:
         <<: *raftnode_base
         container_name: garrett_raftnode3
         environment: 
