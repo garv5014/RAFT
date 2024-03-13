@@ -4,6 +4,7 @@ x-raftnode-base: &raftnode_base
     build:
         context: ./../../ 
         dockerfile: 'Raft_Node/Dockerfile'
+    restart: always
     
 x-raftnode-env: &raftnode_env
     TZ: America/Denver
@@ -37,6 +38,7 @@ services:
         build:
             context: ./../../ 
             dockerfile: 'Raft_Gateway/Dockerfile'
+        restart: always
         environment:
             TZ: America/Denver
             COLLECTORURL: 'http://garrett_otel_collector:4317'
@@ -65,12 +67,14 @@ services:
     garrett_otel_collector:
         image: otel/opentelemetry-collector-contrib
         container_name: garrett_otel_collector
+        restart: always
         volumes:
             - ./configs/otel-collector-config.yml:/etc/otelcol-contrib/config.yml
 
     garrett_zipkin:
         image: ghcr.io/openzipkin/zipkin-slim:${TAG:-latest}
         container_name: garrett_zipkin
+        restart: always
         # Environment settings are defined here https://github.com/openzipkin/zipkin/blob/master/zipkin-server/README.md#environment-variables
         environment:
             - STORAgarrett_TYPE=mem
