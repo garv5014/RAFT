@@ -9,11 +9,11 @@ processors:
 
 exporters:
   zipkin:
-    endpoint: http://ge_zipkin:9411/api/v2/spans
+    endpoint: http://garrett_zipkin:9411/api/v2/spans
   prometheus:
     endpoint: 0.0.0.0:8889 
   loki:
-    endpoint: http://ge_loki:3100/loki/api/v1/push
+    endpoint: http://garrett_loki:3100/loki/api/v1/push
   
 
 extensions:

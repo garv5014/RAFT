@@ -1,4 +1,5 @@
-﻿
+﻿using Raft_Node.Options;
+
 namespace Raft_Node;
 
 public class RaftNodeService : BackgroundService
@@ -11,7 +12,7 @@ public class RaftNodeService : BackgroundService
 
     private Random Random;
 
-    private List<RaftNodeService> OtherNodes { get; set; }
+    private List<string> otherNodeAddresses { get; set; }
 
     private string FilePath;
 
@@ -26,27 +27,18 @@ public class RaftNodeService : BackgroundService
     public Dictionary<string, (string value, int logIndex)> Log = new Dictionary<string, (string, int)>();
     public Guid MostRecentLeader { get; set; }
 
-    public RaftNodeService(List<RaftNodeService> otherNodes, int timeFactor = 1, Random? seeded = null)
+    public RaftNodeService(HttpClient client, ILogger<RaftNodeService> logger, ApiOptions options)
     {
-        if (seeded != null)
+        for (int i = 1; i <= options.NodeCount; i++)
         {
-            Random = seeded;
+            if (i == options.NodeIdentifier)
+            {
+                continue;
+            }
+            otherNodeAddresses.Add($"http://node{i}:{options.NodeServicePort}");
         }
-        else
-        {
-            Random = new Random();
-        }
-        Term = 0;
-        VotedFor = Guid.Empty;
-        State = RaftNodeState.Follower;
-        Name = Guid.NewGuid();
-        FilePath = $"{Name}.log";
-        OtherNodes = otherNodes;
-        UpdateElectionTimer();
-        IsAlive = false;
-        TimeFactor = timeFactor;
     }
-
+    /*
     private void UpdateElectionTimer()
     {
         ElectionTimeout = Random.Next(150, 300) * TimeFactor;
@@ -255,13 +247,9 @@ public class RaftNodeService : BackgroundService
         IsAlive = true;
     }
 
+    */
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        this.Initialize();
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            this.Update();
-        }
     }
 }
 

@@ -6,11 +6,10 @@ public class GatewayService
 {
     private List<RaftNodeService> Nodes;
 
-    public GatewayService(List<RaftNodeService> nodes)
+    public GatewayService()
     {
-        Nodes = nodes;
     }
-
+    /*
     private RaftNodeService FindLeader()
     {
         return Nodes.FirstOrDefault(node => node.GetState() == RaftNodeState.Leader && node.isHealthy());
@@ -93,5 +92,5 @@ public class GatewayService
 
         return false;
     }
-
+    */
 }

@@ -6,7 +6,7 @@ datasources:
     type: prometheus
     access: proxy
     orgId: 1
-    url: http://ge_prometheus:9090
+    url: http://garrett_prometheus:9090
     basicAuth: false
     isDefault: false
     version: 1
@@ -16,7 +16,7 @@ datasources:
 
   - name: Zipkin
     type: zipkin
-    url: http://ge_zipkin:9411
+    url: http://garrett_zipkin:9411
     access: proxy
     orgId: 1
     version: 1
@@ -27,7 +27,7 @@ datasources:
     type: loki
     access: proxy
     orgId: 1
-    url: http://ge_loki:3100
+    url: http://garrett_loki:3100
     basicAuth: false
     isDefault: true
     version: 1

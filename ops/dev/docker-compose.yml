@@ -8,6 +8,8 @@ x-raftnode-base: &raftnode_base
 x-raftnode-env: &raftnode_env
     TZ: America/Denver
     aspnetcore_environment: Development
+    COLLECTORURL: 'http://otel_collector:4317'
+
 
 services: 
     raftnode1:
@@ -49,12 +51,12 @@ services:
             dockerfile: 'Raft_Gateway/Dockerfile'
         environment:
             TZ: America/Denver
-            COLLECTORURL: 'http://ge_otel_collector:4317'
+            COLLECTORURL: 'http://otel_collector:4317'
             aspnetcore_environment: Development
 
-    ge_otel_collector:
+    otel_collector:
         image: otel/opentelemetry-collector-contrib
-        container_name: ge_otel_collector
+        container_name: otel_collector
         command: ["--config=/etc/otelcol-contrib/config.yml", "${OTELCOL_ARGS}"]
         volumes:
           - ./otel-collector-config.yml:/etc/otelcol-contrib/config.yml

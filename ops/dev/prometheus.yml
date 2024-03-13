@@ -3,8 +3,8 @@ scrape_configs:
     scrape_interval: 10s
     static_configs:
       - targets: 
-         - 'ge_otel_collector:8888'
-         - 'ge_otel_collector:8889'
+         - 'otel_collector:8888'
+         - 'otel_collector:8889'
   - job_name: 'application'
     scrape_interval: 10s
     static_configs:

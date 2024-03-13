@@ -8,6 +8,8 @@ x-raftnode-base: &raftnode_base
 x-raftnode-env: &raftnode_env
     TZ: America/Denver
     aspnetcore_environment: Development
+    COLLECTORURL: 'http://garrett_otel_collector:4317'
+
 
 services: 
     raftnode1:

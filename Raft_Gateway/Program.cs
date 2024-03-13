@@ -20,7 +20,7 @@ builder.Services.AddOpenTelemetry()
     .ConfigureResource(resourceBuilder =>
     {
         resourceBuilder
-                .AddService("Chat_App");
+                .AddService("Gateway");
     })
   .WithTracing(tracing =>
   {
