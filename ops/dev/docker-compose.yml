@@ -4,7 +4,7 @@ x-raftnode-base: &raftnode_base
     build:
         context: ./../../ 
         dockerfile: 'Raft_Node/Dockerfile'
-    
+
 x-raftnode-env: &raftnode_env
     TZ: America/Denver
     aspnetcore_environment: Development
@@ -17,21 +17,21 @@ services:
         container_name: raftnode1
         environment: 
             <<: *raftnode_env
-            node_id: 1
+            NodeIdentifier: 1
     raftnode2:
         <<: *raftnode_base
         container_name: raftnode2
         environment: 
             <<: *raftnode_env
-            node_id: 2
+            NodeIdentifier: 2
 
     raftnode3:
         <<: *raftnode_base
         container_name: raftnode3
         environment: 
             <<: *raftnode_env
-            node_id: 3
-            
+            NodeIdentifier: 3
+ 
     nginx:
         image: nginx:latest
         container_name: reverse_proxy
@@ -43,7 +43,7 @@ services:
           - raftnode1
           - raftnode2
           - raftnode3
-    
+
     gateway: 
         container_name: gateway
         build:

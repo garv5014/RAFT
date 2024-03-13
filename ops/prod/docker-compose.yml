@@ -17,20 +17,20 @@ services:
         container_name: garrett_raftnode1
         environment: 
             <<: *raftnode_env
-            node_id: 1
+            NodeIdentifier: 1
     raftnode2:
         <<: *raftnode_base
         container_name: garrett_raftnode2
         environment: 
             <<: *raftnode_env
-            node_id: 2
+            NodeIdentifier: 2
 
     raftnode3:
         <<: *raftnode_base
         container_name: garrett_raftnode3
         environment: 
             <<: *raftnode_env
-            node_id: 3
+            NodeIdentifier: 3
 
     garrett_gateway: 
         container_name: garrett_gateway

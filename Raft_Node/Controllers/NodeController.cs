@@ -8,17 +8,34 @@ namespace Raft_Node.controllers
     [ApiController]
     public class NodeController : ControllerBase
     {
+        public RaftNodeService RaftNodeService { get; }
         private readonly IConfiguration configuration;
+        private readonly ApiOptions apiOptions;
 
-        public NodeController(IConfiguration configuration)
+        public NodeController(IConfiguration configuration, ApiOptions apiOptions, RaftNodeService raftNodeService)
         {
             this.configuration = configuration;
+            this.apiOptions = apiOptions;
+            RaftNodeService = raftNodeService;
         }
+
 
         [HttpGet]
         public string Get()
         {
-            return "You talked to node " + configuration["node_id"];
+            return "You talked to node " + apiOptions.NodeIdentifier;
+        }
+
+        [HttpGet("identify")]
+        public int Identify()
+        {
+            return apiOptions.NodeIdentifier;
+        }
+
+        [HttpGet("receiveVotRequest")]
+        public bool ReceiveVoteRequest([FromQuery] int term, [FromQuery] Guid voteForName)
+        {
+            return RaftNodeService.ReceiveVoteRequest(term, voteForName);
         }
     }
 }

@@ -23,6 +23,10 @@ public class RaftNodeService : BackgroundService
     private int TimeFactor = 1;
 
     public Dictionary<string, (string value, int logIndex)> Log = new Dictionary<string, (string, int)>();
+    private readonly HttpClient client;
+    private readonly ILogger<RaftNodeService> logger;
+    private readonly ApiOptions options;
+
     public Guid MostRecentLeader { get; set; }
 
     public RaftNodeService(HttpClient client, ILogger<RaftNodeService> logger, ApiOptions options)
@@ -36,8 +40,12 @@ public class RaftNodeService : BackgroundService
             }
             otherNodeAddresses.Add($"http://node{i}:{options.NodeServicePort}");
         }
+
+        this.client = client;
+        this.logger = logger;
+        this.options = options;
     }
-    /*
+
     private void UpdateElectionTimer()
     {
         ElectionTimeout = Random.Next(150, 300) * TimeFactor;
@@ -58,7 +66,103 @@ public class RaftNodeService : BackgroundService
         IsAlive = true;
         MakeTimeoutThread();
     }
+    public void MakeTimeoutThread()
+    {
+        new Thread(() =>
+        {
+            while (IsAlive)
+            {
+                if (State == RaftNodeState.Leader)
+                {
+                    Task.Delay(100).Wait();
+                    SendHeartbeats();
+                }
+                else if (ElectionTimedOut())
+                {
+                    WriteToLog($"Node {Name} timed out");
+                    StartElection();
+                }
+            }
+        }).Start();
+    }
 
+    public async void StartElection()
+    {
+        State = RaftNodeState.Candidate;
+        Term++;
+        VotedFor = Name;
+        WriteToLog($"Node {Name} started election for term {Term}");
+        UpdateElectionTimer();
+        int votes = 1;
+        foreach (var node in otherNodeAddresses)
+        {
+            var nodeId = int.Parse(await client.GetStringAsync($"{node}/api/node/identify"));
+            if (nodeId != options.NodeIdentifier)
+            {
+                new Thread(() =>
+                {
+                    var votedFor = bool.Parse(client.GetStringAsync($"{node}/api/node/receiveVotRequest?term={Term}&voteForName={Name}").Result);
+                    if (votedFor)
+                    {
+                        votes++;
+                    }
+                    else
+                    {
+                        WriteToLog($"Node {options.NodeIdentifier} did not vote for {Name} in term {Term}");
+                    }
+                }).Start();
+            }
+        }
+        if (votes >= Math.Floor((double)(otherNodeAddresses.Count / 2)))
+        {
+            State = RaftNodeState.Leader;
+            WriteToLog($"Node {Name} became leader for term {Term}");
+            SendHeartbeats();
+        }
+        else
+        {
+            votes = 0;
+            State = RaftNodeState.Follower;
+        }
+    }
+
+    private void WriteToLog(string entry)
+    {
+        using (var stream = new FileStream(FilePath, FileMode.Append, FileAccess.Write, FileShare.Write))
+        using (var writer = new StreamWriter(stream))
+        {
+            writer.WriteLine($"{DateTime.UtcNow}:{entry}");
+        }
+    }
+
+    private bool ElectionTimedOut()
+    {
+        return DateTime.UtcNow - LastHeartbeat > TimeSpan.FromMilliseconds(ElectionTimeout);
+    }
+
+    // send heartbeats to all other nodes
+    private void SendHeartbeats()
+    {
+        if (!IsAlive)
+        {
+            return;
+        }
+
+        // Example of deciding what entries to send - this will depend on your application logic
+        List<(string key, string value)> entriesToSend = new List<(string key, string value)>();
+
+        // Determine the entries to send based on the last log index acknowledged by each follower, etc.
+        // This is simplified; in practice, you'd track what each follower has and send them what they need.
+
+        foreach (var node in otherNodeAddresses)
+        {
+            if (node != Name)
+            {
+                // If there are no new entries, this effectively acts as a heartbeat
+                node.AppendEntries(Term, Name, entriesToSend);
+            }
+        }
+    }
     // Receive vote request return bool if vote is granted
     public bool ReceiveVoteRequest(int term, Guid candidateId)
     {
@@ -78,8 +182,10 @@ public class RaftNodeService : BackgroundService
         WriteToLog($"Did not vote for {candidateId} in term {term}");
         return false;
     }
+    /*
 
-    // Receive a heartbeat from a leader
+
+    // Receive a heartbeat from a leader 
     public void ReceiveHeartbeat(int term, Guid leaderId)
     {
         if (term >= Term)
@@ -110,63 +216,7 @@ public class RaftNodeService : BackgroundService
         }
     }
 
-    public void MakeTimeoutThread()
-    {
-        new Thread(() =>
-        {
-            while (IsAlive)
-            {
-                if (State == RaftNodeState.Leader)
-                {
-                    Task.Delay(100).Wait();
-                    SendHeartbeats();
-                }
-                else if (ElectionTimedOut())
-                {
-                    WriteToLog($"Node {Name} timed out");
-                    StartElection();
-                }
-            }
-        }).Start();
-    }
 
-    public void StartElection()
-    {
-        State = RaftNodeState.Candidate;
-        Term++;
-        VotedFor = Name;
-        WriteToLog($"Node {Name} started election for term {Term}");
-        UpdateElectionTimer();
-        int votes = 1;
-        foreach (var node in OtherNodes)
-        {
-            if (node.Name != Name)
-            {
-                new Thread(() =>
-                {
-                    if (node.ReceiveVoteRequest(Term, Name))
-                    {
-                        votes++;
-                    }
-                    else
-                    {
-                        WriteToLog($"Node {node.Name} did not vote for {Name} in term {Term}");
-                    }
-                }).Start();
-            }
-        }
-        if (votes >= Math.Floor((double)(OtherNodes.Count / 2)))
-        {
-            State = RaftNodeState.Leader;
-            WriteToLog($"Node {Name} became leader for term {Term}");
-            SendHeartbeats();
-        }
-        else
-        {
-            votes = 0;
-            State = RaftNodeState.Follower;
-        }
-    }
 
     public void AppendEntries(int term, Guid leaderId, List<(string key, string value)> entries)
     {
@@ -190,47 +240,6 @@ public class RaftNodeService : BackgroundService
             }
 
             WriteToLog($"Appended entries from {leaderId}");
-        }
-    }
-
-
-    private bool ElectionTimedOut()
-    {
-        return DateTime.UtcNow - LastHeartbeat > TimeSpan.FromMilliseconds(ElectionTimeout);
-    }
-
-    // send heartbeats to all other nodes
-    private void SendHeartbeats()
-    {
-        if (!IsAlive)
-        {
-            return;
-        }
-
-        // Example of deciding what entries to send - this will depend on your application logic
-        List<(string key, string value)> entriesToSend = new List<(string key, string value)>();
-
-        // Determine the entries to send based on the last log index acknowledged by each follower, etc.
-        // This is simplified; in practice, you'd track what each follower has and send them what they need.
-
-        foreach (var node in OtherNodes)
-        {
-            if (node.Name != Name)
-            {
-                // If there are no new entries, this effectively acts as a heartbeat
-                node.AppendEntries(Term, Name, entriesToSend);
-            }
-        }
-    }
-
-
-
-    private void WriteToLog(string entry)
-    {
-        using (var stream = new FileStream(FilePath, FileMode.Append, FileAccess.Write, FileShare.Write))
-        using (var writer = new StreamWriter(stream))
-        {
-            writer.WriteLine($"{DateTime.UtcNow}:{entry}");
         }
     }
 

@@ -2,7 +2,7 @@
 public class ApiOptions
 {
     public int NodeIdentifier { get; set; } = 0;
-    public string NodeServiceName { get; set; } = "node";
+    public string NodeServiceName { get; set; } = "raftnode";
     public int NodeServicePort { get; set; } = 8080;
     public int NodeCount { get; set; } = 3;
     public string EntryLogPath { get; set; } = "/entrylogs";

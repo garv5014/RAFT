@@ -27,7 +27,7 @@ builder.Services.AddOpenTelemetry()
               .AddAspNetCoreInstrumentation() // Automatic instrumentation for ASP.NET Core
               .AddHttpClientInstrumentation() // Automatic instrumentation for HttpClient
               .AddEntityFrameworkCoreInstrumentation()
-              .AddSource("Gateway")
+              .AddSource("Node")
               .AddOtlpExporter(options =>
               {
                   options.Endpoint = collector_uri; // OTLP exporter endpoint
@@ -50,7 +50,7 @@ builder.Services.AddLogging(l =>
     l.AddOpenTelemetry(o =>
     {
         o.SetResourceBuilder(
-            ResourceBuilder.CreateDefault().AddService("Gateway"))
+            ResourceBuilder.CreateDefault().AddService("Node"))
         .AddOtlpExporter(options =>
         {
             options.Endpoint = collector_uri;
