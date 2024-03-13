@@ -1,3 +1,7 @@
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Raft_Node;
 
 var builder = WebApplication.CreateBuilder(args);

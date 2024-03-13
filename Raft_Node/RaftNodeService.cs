@@ -1,6 +1,4 @@
-﻿using Raft_Node.Options;
-
-namespace Raft_Node;
+﻿namespace Raft_Node;
 
 public class RaftNodeService : BackgroundService
 {
@@ -29,6 +27,7 @@ public class RaftNodeService : BackgroundService
 
     public RaftNodeService(HttpClient client, ILogger<RaftNodeService> logger, ApiOptions options)
     {
+        otherNodeAddresses = new List<string>();
         for (int i = 1; i <= options.NodeCount; i++)
         {
             if (i == options.NodeIdentifier)
