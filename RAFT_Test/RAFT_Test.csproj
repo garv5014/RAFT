@@ -24,6 +24,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RAFT\RAFT.csproj" />
+    <ProjectReference Include="..\Raft_Gateway\Raft_Gateway.csproj" />
+    <ProjectReference Include="..\Raft_Node\Raft_Node.csproj" />
   </ItemGroup>
 
 </Project>

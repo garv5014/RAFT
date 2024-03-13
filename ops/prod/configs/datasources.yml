@@ -1,0 +1,41 @@
+# https://community.grafana.com/t/saving-from-docker-grafana-to-local/87993/2
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    orgId: 1
+    url: http://ge_prometheus:9090
+    basicAuth: false
+    isDefault: false
+    version: 1
+    editable: false
+    jsonData:
+      tlsSkipVerify: true
+
+  - name: Zipkin
+    type: zipkin
+    url: http://ge_zipkin:9411
+    access: proxy
+    orgId: 1
+    version: 1
+    apiVersion: 1
+    isDefault: false
+
+  - name: Loki
+    type: loki
+    access: proxy
+    orgId: 1
+    url: http://ge_loki:3100
+    basicAuth: false
+    isDefault: true
+    version: 1
+    editable: false
+    apiVersion: 1
+    jsonData:
+      derivedFields:
+        - datasourceUid: otlp
+          matcherRegex: (?:"traceid"):"(\w+)"
+          name: TraceID
+          url: $${__value.raw}

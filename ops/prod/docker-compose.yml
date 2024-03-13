@@ -1,0 +1,125 @@
+version: '3.8'
+
+x-raftnode-base: &raftnode_base
+    build:
+        context: ./../../ 
+        dockerfile: 'Raft_Node/Dockerfile'
+    
+x-raftnode-env: &raftnode_env
+    TZ: America/Denver
+    aspnetcore_environment: Development
+
+services: 
+    raftnode1:
+        <<: *raftnode_base
+        container_name: raftnode1
+        environment: 
+            <<: *raftnode_env
+            node_id: 1
+    raftnode2:
+        <<: *raftnode_base
+        container_name: raftnode2
+        environment: 
+            <<: *raftnode_env
+            node_id: 2
+
+    raftnode3:
+        <<: *raftnode_base
+        container_name: raftnode3
+        environment: 
+            <<: *raftnode_env
+            node_id: 3
+
+    gateway: 
+        container_name: gateway
+        build:
+            context: ./../../ 
+            dockerfile: 'Raft_Gateway/Dockerfile'
+        environment:
+            TZ: America/Denver
+            COLLECTORURL: 'http://garrett_otel_collector:4317'
+            aspnetcore_environment: Development
+            
+    swag:
+        image: lscr.io/linuxserver/swag
+        container_name: garrett_Raftshop_proxy
+        cap_add:
+            - NET_ADMIN
+        environment:
+            - PUID=1000
+            - PGID=1000
+            - TZ=America/Denver
+            - URL=shopraft.duckdns.org
+            - VALIDATION=duckdns
+            - DUCKDNSTOKEN=${DUCKDNSTOKEN}
+            - STAGING=false
+        volumes:
+            - /home/garrett/data/swag:/config
+            - ./swag-default.conf:/config/nginx/site-confs/default.conf
+        ports:
+            - 0.0.0.0:1460:443
+        restart: always
+
+    garrett_otel_collector:
+        image: otel/opentelemetry-collector-contrib
+        container_name: garrett_otel_collector
+        command: ["--config=/etc/otelcol-contrib/config.yml", "${OTELCOL_ARGS}"]
+        volumes:
+            - ./configs/otel-collector-config.yml:/etc/otelcol-contrib/config.yml
+        ports:
+            - 1888:1888 # pprof extension
+            - 8888:8888 # Prometheus metrics exposed by the Collector
+            - 8889:8889 # Prometheus exporter metrics
+            - 13133:13133 # health_check extension
+            - 4317:4317 # OTLP gRPC receiver
+            - 4318:4318 # OTLP http receiver
+            - 55679:55679 # zpages extension 
+
+    garrett_zipkin:
+        image: ghcr.io/openzipkin/zipkin-slim:${TAG:-latest}
+        container_name: garrett_zipkin
+        # Environment settings are defined here https://github.com/openzipkin/zipkin/blob/master/zipkin-server/README.md#environment-variables
+        environment:
+            - STORAgarrett_TYPE=mem
+        # ports:
+        #   # Port used for the Zipkin UI and HTTP Api
+        #   - 9411:9411
+
+    garrett_prometheus:
+        image: prom/prometheus
+        container_name: garrett_prometheus
+        command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+        # ports:
+        #   - 9090:9090
+        restart: always
+        volumes:
+            - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+
+    garrett_grafana:
+        build:
+            context: .
+            dockerfile: ./Dockerfiles/grafana/Dockerfile
+        user: "1001"
+        container_name: garrett_grafana
+        # ports:
+            # - 3000:3000
+        restart: always
+        environment:
+            - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+            - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+        volumes:
+            - ./configs/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/default.yml
+            - ./dashboards:/var/lib/grafana/dashboards
+            - ./configs/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+            - ./configs/grafana.ini:/etc/grafana/grafana.ini
+
+    garrett_loki:
+        image: grafana/loki:2.9.0
+        command: -config.file=/etc/loki/local-config.yml
+        container_name: garrett_loki
+        restart: always
+        volumes:
+            - ./configs/loki.yml:/etc/loki/local-config.yml
+        # ports:
+        #   - "3100:3100"

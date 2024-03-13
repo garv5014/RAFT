@@ -9,6 +9,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Raft_Node/Raft_Node.csproj", "Raft_Node/"]
+COPY ["RAFT/RAFT.csproj", "RAFT/"]
 RUN dotnet restore "./Raft_Node/./Raft_Node.csproj"
 COPY . .
 WORKDIR "/src/Raft_Node"
