@@ -40,10 +40,16 @@ public class RaftNodeService : BackgroundService
             }
             otherNodeAddresses.Add($"http://node{i}:{options.NodeServicePort}");
         }
-
+        Term = 0;
         this.client = client;
         this.logger = logger;
         this.options = options;
+        FilePath = $"{Name}.log";
+        this.Random = new Random();
+        VotedFor = Guid.Empty;
+        Name = Guid.NewGuid();
+        State = RaftNodeState.Follower;
+        IsAlive = false;
     }
 
     private void UpdateElectionTimer()
@@ -61,11 +67,13 @@ public class RaftNodeService : BackgroundService
     {
         return State;
     }
+
     public void Initialize()
     {
         IsAlive = true;
         MakeTimeoutThread();
     }
+
     public void MakeTimeoutThread()
     {
         new Thread(() =>
