@@ -31,7 +31,7 @@ services:
             node_id: 3
 
     gateway: 
-        container_name: gateway
+        container_name: garrett_gateway
         build:
             context: ./../../ 
             dockerfile: 'Raft_Gateway/Dockerfile'
