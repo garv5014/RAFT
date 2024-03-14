@@ -38,13 +38,13 @@ public class RaftNodeService : BackgroundService
             {
                 continue;
             }
-            otherNodeAddresses.Add($"http://node{i}:{options.NodeServicePort}");
+            otherNodeAddresses.Add($"http://{options.NodeServiceName}{i}:{options.NodeServicePort}");
         }
         Term = 0;
         this.client = client;
         this.logger = logger;
         this.options = options;
-        FilePath = $"{Name}.log";
+        FilePath = $"{options.EntryLogPath}";
         this.Random = new Random();
         VotedFor = Guid.Empty;
         Name = Guid.NewGuid();
@@ -67,31 +67,23 @@ public class RaftNodeService : BackgroundService
     {
         return State;
     }
-
-    public void Initialize()
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         IsAlive = true;
-        MakeTimeoutThread();
-    }
-
-    public void MakeTimeoutThread()
-    {
-        new Thread(() =>
+        LastHeartbeat = DateTime.UtcNow;
+        while (!stoppingToken.IsCancellationRequested)
         {
-            while (IsAlive)
+            if (State == RaftNodeState.Leader)
             {
-                if (State == RaftNodeState.Leader)
-                {
-                    Task.Delay(100).Wait();
-                    SendHeartbeats();
-                }
-                else if (ElectionTimedOut())
-                {
-                    WriteToLog($"Node {Name} timed out");
-                    StartElection();
-                }
+                Task.Delay(100).Wait();
+                SendHeartbeats();
             }
-        }).Start();
+            else if (ElectionTimedOut())
+            {
+                WriteToLog("Election timed out.");
+                StartElection();
+            }
+        }
     }
 
     public async void StartElection()
@@ -104,26 +96,24 @@ public class RaftNodeService : BackgroundService
         int votes = 1;
         foreach (var node in otherNodeAddresses)
         {
-            int nodeId = await getIdFromNode(node);
-            if (nodeId != options.NodeIdentifier)
+            var res = await ReceiveVoteRequestAsync(node);
+
+            if (res != null && res.VotedId != options.NodeIdentifier)
             {
-                new Thread(() =>
+                if (res.VoteGranted)
                 {
-                    var votedFor = bool.Parse(client.GetStringAsync($"{node}/api/node/receiveVotRequest?term={Term}&voteForName={Name}").Result);
-                    if (votedFor)
-                    {
-                        votes++;
-                    }
-                    else
-                    {
-                        WriteToLog($"Node {options.NodeIdentifier} did not vote for {Name} in term {Term}");
-                    }
-                }).Start();
+                    votes++;
+                }
+                else
+                {
+                    WriteToLog($"Node {options.NodeIdentifier} did not vote for {Name} in term {Term}");
+                }
             }
         }
         if (votes >= Math.Floor((double)(otherNodeAddresses.Count / 2)))
         {
             State = RaftNodeState.Leader;
+            MostRecentLeader = Name;
             WriteToLog($"Node {Name} became leader for term {Term}");
             SendHeartbeats();
         }
@@ -136,7 +126,15 @@ public class RaftNodeService : BackgroundService
 
     private async Task<int> getIdFromNode(string node)
     {
-        return int.Parse(await client.GetStringAsync($"{node}/api/node/identify"));
+        try
+        {
+            logger.LogInformation($"Getting id from node {node} base address {client.BaseAddress}");
+            return int.Parse(await client.GetStringAsync($"{node}/api/node/identify"));
+        }
+        catch (Exception)
+        {
+            return -1;
+        }
     }
 
     private void WriteToLog(string entry)
@@ -172,16 +170,45 @@ public class RaftNodeService : BackgroundService
             var nodeId = await getIdFromNode(node);
             if (nodeId != options.NodeIdentifier)
             {
-                // If there are no new entries, this effectively acts as a heartbeat
-                await client.PostAsJsonAsync($"{node}/api/node/appendEntries", new AppendEntriesRequest
+                try
                 {
-                    Term = Term,
-                    LeaderId = Name,
-                    Entries = entriesToSend
-                });
+                    await client.PostAsJsonAsync($"{node}/api/node/appendEntries", new AppendEntriesRequest
+                    {
+                        Term = Term,
+                        LeaderId = Name,
+                        Entries = entriesToSend
+                    });
+                }
+                catch (Exception)
+                {
+                }
+                // If there are no new entries, this effectively acts as a heartbeat
             }
         }
     }
+
+    public async Task<VoteResponse> ReceiveVoteRequestAsync(string nodeAddress)
+    {
+        logger.LogInformation($"Sending vote request to {nodeAddress}/api/node/receiveVoteRequest?term={Term}&voteForName={Name}");
+        try
+        {
+            var res = await client.GetAsync($"{nodeAddress}/api/node/receiveVoteRequest?term={Term}&voteForName={Name}");
+            if (res.IsSuccessStatusCode)
+            {
+                var voteResponse = await res.Content.ReadFromJsonAsync<VoteResponse>();
+                if (voteResponse != null)
+                {
+                    return voteResponse;
+                }
+            }
+        }
+        catch (Exception)
+        {
+
+        }
+        return null;
+    }
+
     // Receive vote request return bool if vote is granted
     public bool ReceiveVoteRequest(int term, Guid candidateId)
     {
@@ -251,10 +278,6 @@ public class RaftNodeService : BackgroundService
         IsAlive = true;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        this.Initialize();
-    }
 }
 
 public enum RaftNodeState

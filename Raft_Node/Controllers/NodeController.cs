@@ -32,10 +32,16 @@ namespace Raft_Node.controllers
             return apiOptions.NodeIdentifier;
         }
 
-        [HttpGet("receiveVotRequest")]
-        public bool ReceiveVoteRequest([FromQuery] int term, [FromQuery] Guid voteForName)
+        [HttpGet("receiveVoteRequest")]
+        public ActionResult<VoteResponse> ReceiveVoteRequest([FromQuery] int term, [FromQuery] Guid voteForName)
         {
-            return RaftNodeService.ReceiveVoteRequest(term, voteForName);
+            var successs = RaftNodeService.ReceiveVoteRequest(term, voteForName);
+            var res = new VoteResponse
+            {
+                VotedId = apiOptions.NodeIdentifier,
+                VoteGranted = successs
+            };
+            return res;
         }
 
         [HttpPost("appendEntries")]
@@ -44,7 +50,7 @@ namespace Raft_Node.controllers
             RaftNodeService.AppendEntries(request);
         }
 
-        [HttpGet("ReceiveHeartbeat")]
+        [HttpGet("receiveHeartbeat")]
         public void ReceiveHeartbeat([FromQuery] int term, [FromQuery] Guid leaderId)
         {
             RaftNodeService.ReceiveHeartbeat(term, leaderId);
