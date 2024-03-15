@@ -39,7 +39,7 @@ namespace Raft_Gateway.controllers
         {
             client.BaseAddress = new Uri(nodeAddresses[id]);
 
-            var response = client.GetAsync("api/node").Result;
+            var response = client.GetAsync("api/Node").Result;
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogInformation("Request to node {id} successful", id);
@@ -57,7 +57,7 @@ namespace Raft_Gateway.controllers
         {
             _logger.LogInformation("StrongGet called with key: {key}", key);
             var leaderAddress = FindLeaderAddress();
-            var value = await client.GetFromJsonAsync<VersionedValue<string>>($"{leaderAddress}/api/node/StrongGet?key={key}");
+            var value = await client.GetFromJsonAsync<VersionedValue<string>>($"{leaderAddress}/api/Node/StrongGet?key={key}");
             if (value == null)
             {
                 throw new Exception("Value not found");
@@ -70,7 +70,7 @@ namespace Raft_Gateway.controllers
         {
             _logger.LogInformation("EventualGet called with key: {key}", key);
             var leaderAddress = FindLeaderAddress();
-            var value = await client.GetFromJsonAsync<VersionedValue<string>>($"{leaderAddress}/api/node/EventualGet?key={key}");
+            var value = await client.GetFromJsonAsync<VersionedValue<string>>($"{leaderAddress}/api/Node/EventualGet?key={key}");
             if (value == null)
             {
                 throw new Exception("Value not found");
@@ -83,7 +83,7 @@ namespace Raft_Gateway.controllers
         {
             _logger.LogInformation("CompareAndSwap called with key: {key}, oldValue: {oldValue}, newValue: {newValue}", request.Key, request.OldValue, request.NewValue);
             var leaderAddress = FindLeaderAddress();
-            var response = await client.PostAsJsonAsync($"{leaderAddress}/api/node/CompareAndSwap", request);
+            var response = await client.PostAsJsonAsync($"{leaderAddress}/api/Node/CompareAndSwap", request);
             response.EnsureSuccessStatusCode();
             return Ok();
         }

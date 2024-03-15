@@ -11,7 +11,7 @@ env:
 jobs: 
   test:
     uses: ./.github/workflows/test.yml
-
+  
   deploy:
     runs-on: [self-hosted]
     steps:
@@ -25,3 +25,25 @@ jobs:
           docker compose down
           docker compose build
           docker compose up -d
+
+  ensure-network:
+    needs: deploy
+    runs-on: [self-hosted, alexoffice5]
+
+    steps:
+      - name: run container to ensure network
+        run: |
+          docker run -d --rm --name w-network-opener --network w-overlay alpine sleep 40 
+
+  deploy-other-node:
+    needs: ensure-network
+    runs-on: [self-hosted, alexoffice4]
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v3
+
+      - name: redeploy application
+        run: |
+          cd ops/prod
+          docker compose pull
+          docker compose --profile worker up -d --build

@@ -58,9 +58,9 @@ namespace Raft_Node.controllers
         }
 
         [HttpGet("whoisleader")]
-        public ActionResult<int> WhoIsLeader()
+        public ActionResult<int> WhoLeader()
         {
-            if (RaftNodeService.MostRecentLeader == Guid.Empty)
+            if (RaftNodeService.MostRecentLeaderId == 0)
             {
                 return NotFound();
             }
