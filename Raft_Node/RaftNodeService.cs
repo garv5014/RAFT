@@ -1,4 +1,6 @@
-﻿namespace Raft_Node;
+﻿using Raft_Library;
+
+namespace Raft_Node;
 
 public class RaftNodeService : BackgroundService
 {
@@ -10,7 +12,7 @@ public class RaftNodeService : BackgroundService
 
     private Random Random;
 
-    private List<string> otherNodeAddresses { get; set; }
+    public List<string> otherNodeAddresses { get; set; }
 
     private string FilePath;
 
@@ -22,12 +24,19 @@ public class RaftNodeService : BackgroundService
 
     private int TimeFactor = 1;
 
-    public Dictionary<string, (string value, int logIndex)> Log = new Dictionary<string, (string, int)>();
+    public Dictionary<string, VersionedValue<string>> Log = new Dictionary<string, VersionedValue<string>>();
+
     private readonly HttpClient client;
+
     private readonly ILogger<RaftNodeService> logger;
+
     private readonly ApiOptions options;
 
     public Guid MostRecentLeader { get; set; }
+
+    public int MostRecentLeaderId { get; set; }
+
+    public int CommittedIndex { get; set; }
 
     public RaftNodeService(HttpClient client, ILogger<RaftNodeService> logger, ApiOptions options)
     {
@@ -114,6 +123,7 @@ public class RaftNodeService : BackgroundService
         {
             State = RaftNodeState.Leader;
             MostRecentLeader = Name;
+            MostRecentLeaderId = options.NodeIdentifier;
             WriteToLog($"Node {Name} became leader for term {Term}");
             SendHeartbeats();
         }
@@ -175,7 +185,7 @@ public class RaftNodeService : BackgroundService
                     await client.PostAsJsonAsync($"{node}/api/node/appendEntries", new AppendEntriesRequest
                     {
                         Term = Term,
-                        LeaderId = Name,
+                        LeaderId = options.NodeIdentifier,
                         Entries = entriesToSend
                     });
                 }
@@ -236,17 +246,17 @@ public class RaftNodeService : BackgroundService
             Term = req.Term;
             State = RaftNodeState.Follower;
             LastHeartbeat = DateTime.UtcNow;
-            MostRecentLeader = req.LeaderId;
+            MostRecentLeaderId = req.LeaderId;
 
             foreach (var entry in req.Entries)
             {
                 if (!Log.ContainsKey(entry.key))
                 {
-                    Log.Add(entry.key, (entry.value, Log.Count));
+                    Log.Add(entry.key, new VersionedValue<string> { Value = entry.value, Version = Log.Count });
                 }
                 else
                 {
-                    Log[entry.key] = (entry.value, Log[entry.key].logIndex); // Update if key exists
+                    Log[entry.key] = new VersionedValue<string> { Value = entry.value, Version = Log[entry.key].Version }; // Update if key exists
                 }
             }
 
@@ -254,16 +264,56 @@ public class RaftNodeService : BackgroundService
         }
     }
     // Receive a heartbeat from a leader 
-    public void ReceiveHeartbeat(int term, Guid leaderId)
+    public void ReceiveHeartbeat(int term, int leaderId)
     {
         if (term >= Term)
         {
             Term = term;
             State = RaftNodeState.Follower;
             LastHeartbeat = DateTime.UtcNow;
-            MostRecentLeader = leaderId; // Update the most recent leader
+            MostRecentLeaderId = leaderId; // Update the most recent leader
             WriteToLog($"Received heartbeat from {leaderId}");
         }
+    }
+
+    public async Task<bool> BroadcastReplication(string key, string value, int index)
+    {
+        var confirmReplicationCount = 1;
+        foreach (var nodeAddr in otherNodeAddresses)
+        {
+            if (await RequestAppendEntry(nodeAddr, Term, key, value, index))
+            {
+                confirmReplicationCount++;
+            }
+        }
+        if (confirmReplicationCount > options.NodeCount / 2)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    private async Task<bool> RequestAppendEntry(string nodeAddr, int term, string key, string value, int index)
+    {
+        try
+        {
+            var req = new AppendEntriesRequest
+            {
+                Term = term,
+                LeaderId = options.NodeIdentifier,
+                Entries = new List<(string key, string value)> { (key, value) }
+            };
+
+            var res = await client.PostAsJsonAsync<AppendEntriesRequest>($"{nodeAddr}/api/node/appendEntries", req);
+            if (res.IsSuccessStatusCode)
+            {
+                return true;
+            }
+        }
+        catch (Exception)
+        {
+        }
+        return false;
     }
 
     // Function that "Kills" the node for testing
