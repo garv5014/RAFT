@@ -13,7 +13,7 @@ jobs:
     uses: ./.github/workflows/test.yml
   
   deploy:
-    runs-on: [self-hosted]
+    runs-on: [self-hosted, alexoffice5]
     steps:
       - name: checkout repo
         uses: actions/checkout@v3
@@ -28,7 +28,7 @@ jobs:
 
   ensure-network:
     needs: deploy
-    runs-on: [self-hosted, alexoffice5]
+    runs-on: [self-hosted, alexoffice4]
 
     steps:
       - name: run container to ensure network
