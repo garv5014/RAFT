@@ -8,145 +8,96 @@ namespace Raft_Node.controllers;
 [Route("api/[controller]")]
 public class NodeController : ControllerBase
 {
-    public RaftNodeService RaftNodeService { get; }
-    private readonly ApiOptions apiOptions;
-    private readonly HttpClient client;
+    public RaftNodeService node { get; }
+    private readonly ApiOptions _apiOptions;
+    private readonly ILogger<NodeController> _logger;
 
-    public NodeController(ApiOptions apiOptions, RaftNodeService raftNodeService, HttpClient client)
+    public NodeController(ApiOptions apiOptions, RaftNodeService raftNodeService, ILogger<NodeController> logger)
     {
-        Console.WriteLine("Node Identifier in the constructor: " + apiOptions.NodeIdentifier);
-        this.apiOptions = apiOptions;
-        RaftNodeService = raftNodeService;
-        this.client = client;
+        _apiOptions = apiOptions;
+        node = raftNodeService;
+        _logger = logger;
     }
 
 
     [HttpGet]
     public string Get()
     {
-        return "You talked to node " + apiOptions.NodeIdentifier;
+        return "You talked to node " + _apiOptions.NodeIdentifier;
     }
 
     [HttpGet("identify")]
     public int Identify()
     {
-        return apiOptions.NodeIdentifier;
+        return _apiOptions.NodeIdentifier;
     }
 
-    [HttpGet("receiveVoteRequest")]
-    public ActionResult<VoteResponse> ReceiveVoteRequest([FromQuery] int term, [FromQuery] Guid voteForName)
+    [HttpPost("append-entries")]
+    public IActionResult AppendEntriesHeartbeat(AppendEntriesRequest request)
     {
-        var successs = RaftNodeService.ReceiveVoteRequest(term, voteForName);
-        var res = new VoteResponse
+        node.AppendEntries(request);
+        return Ok();
+    }
+
+    [HttpPost("append-entry")]
+    public IActionResult AppendEntry(AppendEntryRequest request)
+    {
+        if (node.AppendEntry(request))
+            return Ok();
+        return BadRequest("Failed to append entry.");
+    }
+
+    [HttpPost("request-vote")]
+    public ActionResult<VoteResponse> RequestVote(VoteRequest request)
+    {
+        var votedYes = node.VoteForCandidate(request);
+        return new VoteResponse
         {
-            VotedId = apiOptions.NodeIdentifier,
-            VoteGranted = successs
+            VotedId = node.Id,
+            VoteGranted = votedYes
         };
-        return res;
-    }
-
-    [HttpPost("appendEntries")]
-    public void AppendEntries([FromBody] AppendEntriesRequest request)
-    {
-        RaftNodeService.AppendEntries(request);
-    }
-
-    [HttpGet("receiveHeartbeat")]
-    public void ReceiveHeartbeat([FromQuery] int term, [FromQuery] int leaderId)
-    {
-        RaftNodeService.ReceiveHeartbeat(term, leaderId);
     }
 
     [HttpGet("whoisleader")]
-    public ActionResult<int> WhoLeader()
+    public ActionResult<int> WhoIsLeader()
     {
-        if (RaftNodeService.MostRecentLeaderId == 0)
+        if (node.LeaderId == 0)
         {
             return NotFound();
         }
-        if (RaftNodeService.GetState() == RaftNodeState.Leader)
+        if (node.IsLeader)
         {
-            return apiOptions.NodeIdentifier;
+            return node.Id;
         }
-        return RaftNodeService.MostRecentLeaderId;
+        return node.LeaderId;
     }
 
     [HttpGet("StrongGet")]
     public async Task<ActionResult<VersionedValue<string>>> StrongGet([FromQuery] string key)
     {
-        if (RaftNodeService.GetState() != RaftNodeState.Leader)
+        _logger.LogInformation("StrongGet called with key: {key}", key);
+        if (node.IsLeader)
         {
-            throw new Exception("Not the leader.");
-        }
-        var confirmLeaderCount = 1;
-        foreach (var nodeAddr in RaftNodeService.otherNodeAddresses)
-        {
-            if (await ConfirmLeader(nodeAddr))
-            {
-                confirmLeaderCount++;
-            }
-            if (confirmLeaderCount > apiOptions.NodeCount / 2)
-            {
-                if (RaftNodeService.Log.ContainsKey(key))
-                {
-                    return RaftNodeService.Log[key];
-                }
-                else
-                {
-                    throw new Exception("Value not found.");
-                }
-            }
-        }
-        throw new Exception("Not the leader.");
-
-    }
-
-    [HttpGet("EventualGet")]
-    public async Task<ActionResult<VersionedValue<string>>> EventualGet([FromQuery] string key)
-    {
-        if (RaftNodeService.Log.ContainsKey(key))
-        {
-            return RaftNodeService.Log[key];
+            return await node.StrongGet(key);
         }
         else
         {
-            return new VersionedValue<string> { Value = string.Empty, Version = 0 };
+            return StatusCode(404, "This node is not the leader");
         }
+    }
+
+    [HttpGet("EventualGet")]
+    public VersionedValue<string> EventualGet([FromQuery] string key)
+    {
+        _logger.LogInformation("EventualGet called with key: {key}", key);
+        return node.EventualGet(key);
     }
 
     [HttpPost("CompareAndSwap")]
-    public async Task<ActionResult> CompareAndSwap(string key, string? oldValue, string newValue)
+    public async Task<ActionResult> CompareAndSwap(CompareAndSwapRequest request)
     {
-        if (RaftNodeService.GetState() != RaftNodeState.Leader)
-        {
-            throw new Exception("Not the leader.");
-        }
-
-        var newIndex = 1;
-        if (Directory.Exists(apiOptions.EntryLogPath))
-        {
-            newIndex = new DirectoryInfo(apiOptions.EntryLogPath).GetFiles().Length + 1;
-        }
-        if (RaftNodeService.Log.ContainsKey(key) && oldValue != RaftNodeService.Log[key].Value)
-            throw new Exception("Value does not match.");
-
-        if (await RaftNodeService.BroadcastReplication(key, newValue, newIndex))
-        {
-            // if majority of nodes have replicated the log, update the data
-            RaftNodeService.Log[key] = new VersionedValue<string> { Value = newValue, Version = newIndex };
-            RaftNodeService.CommittedIndex = newIndex;
-            return Ok();
-        }
-        throw new Exception("Could not replicate to majority of nodes.");
-    }
-
-    private async Task<bool> ConfirmLeader(string addr)
-    {
-        var leaderId = await client.GetFromJsonAsync<int>($"{addr}/api/node/whoisleader");
-        if (leaderId == apiOptions.NodeIdentifier)
-        {
-            return true;
-        }
-        return false;
+        _logger.LogInformation("CompareAndSwap called with key: {key}, oldValue: {value}, newValue: {newValue}", request.Key, request.OldValue, request.NewValue);
+        await node.CompareAndSwap(request.Key, request.OldValue, request.NewValue);
+        return Ok();
     }
 }
