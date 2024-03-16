@@ -5,282 +5,411 @@ namespace Raft_Node;
 
 public class RaftNodeService : BackgroundService
 {
-    private RaftNodeState State = RaftNodeState.Follower;
+    public RaftNodeState State { get; set; } = RaftNodeState.Follower;
+    private DateTime lastHeartbeatReceived;
+    private int electionTimeout;
+    private Random random = new Random();
+    public List<string> OtherNodeAddresses { get; set; } = new List<string>();
 
-    public int Term;
-    private Guid VotedFor { get; set; }
-    public Guid Name { get; set; }
+    public int Id { get; private set; }
+    public Dictionary<string, VersionedValue<string>> Data { get; set; } = new();
+    public int CurrentTerm { get; set; } = 0;
+    public int CommittedIndex { get; set; }
+    public int VotedFor { get; set; }
+    public int LeaderId { get; set; }
+    public bool IsLeader => State == RaftNodeState.Leader;
 
-    private Random Random;
-
-    public List<string> otherNodeAddresses { get; set; }
-
-    private string FilePath;
-
-    private int ElectionTimeout;
-
-    private DateTime LastHeartbeat;
-
-    private bool IsAlive;
-
-    private int TimeFactor = 1;
-
-    public Dictionary<string, VersionedValue<string>> Log = new Dictionary<string, VersionedValue<string>>();
-
-    private readonly HttpClient client;
 
     private readonly ILogger<RaftNodeService> logger;
-
     private readonly ApiOptions options;
+    private readonly IRaftNodeClient nodeClient;
 
-    public Guid MostRecentLeader { get; set; }
-
-    public int MostRecentLeaderId { get; set; }
-
-    public int CommittedIndex { get; set; }
-
-    public RaftNodeService(HttpClient client, ILogger<RaftNodeService> logger, ApiOptions options)
+    public RaftNodeService(ILogger<RaftNodeService> logger, ApiOptions options, IRaftNodeClient nodeClient)
     {
-        otherNodeAddresses = new List<string>();
+        this.logger = logger;
+        this.options = options;
+        this.nodeClient = nodeClient;
+        Id = options.NodeIdentifier;
+        electionTimeout = random.Next(150, 300);
         for (int i = 1; i <= options.NodeCount; i++)
         {
             if (i == options.NodeIdentifier)
             {
                 continue;
             }
-            otherNodeAddresses.Add($"http://{options.NodeServiceName}{i}:{options.NodeServicePort}");
+            OtherNodeAddresses.Add($"http://{options.NodeServiceName}{i}:{options.NodeServicePort}");
         }
-        Term = 0;
-        this.client = client;
-        this.logger = logger;
-        this.options = options;
-        FilePath = $"{options.EntryLogPath}";
-        this.Random = new Random();
-        VotedFor = Guid.Empty;
-        Name = Guid.NewGuid();
-        State = RaftNodeState.Follower;
-        IsAlive = false;
     }
 
-    private void UpdateElectionTimer()
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        ElectionTimeout = Random.Next(150, 300) * TimeFactor;
-        LastHeartbeat = DateTime.UtcNow;
-    }
+        Console.WriteLine("Initializing node.");
 
-    public bool isHealthy()
-    {
-        return IsAlive;
-    }
-
-    public RaftNodeState GetState()
-    {
-        return State;
-    }
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        IsAlive = true;
-        LastHeartbeat = DateTime.UtcNow;
-        while (!stoppingToken.IsCancellationRequested)
+        lastHeartbeatReceived = DateTime.UtcNow;
+        return Task.Run(async () =>
         {
-            if (State == RaftNodeState.Leader)
+            while (!stoppingToken.IsCancellationRequested)
             {
-                Task.Delay(100).Wait();
-                SendHeartbeats();
+                if (State == RaftNodeState.Leader)
+                {
+                    Task.Delay(100).Wait();
+                    await SendHeartbeats();
+                }
+                else if (HasElectionTimedOut())
+                {
+                    WriteLog("Election timed out.");
+                    await StartElection();
+                }
             }
-            else if (ElectionTimedOut())
-            {
-                WriteToLog("Election timed out.");
-                StartElection();
-            }
-        }
+        });
     }
 
-    public async void StartElection()
+    public (string value, int version) Get(string key)
+    {
+        return ("value", 1);
+    }
+
+
+    public async Task StartElection(int term = 0)
     {
         State = RaftNodeState.Candidate;
-        Term++;
-        VotedFor = Name;
-        WriteToLog($"Node {Name} started election for term {Term}");
-        UpdateElectionTimer();
-        int votes = 1;
-        foreach (var node in otherNodeAddresses)
+        if (term > 0)
         {
-            var res = await ReceiveVoteRequestAsync(node);
+            CurrentTerm = term;
+        }
+        else
+        {
+            CurrentTerm++;
+        }
+        ResetElectionTimeout();
+        WriteLog($"Running for election cycle {CurrentTerm}. Requesting votes from other nodes.");
+        int votesReceived = 1; // vote for self
+        VotedFor = Id;
+        long myLatestCommittedLogIndex = 0;
+        if (Data.Count() > 0)
+            myLatestCommittedLogIndex = Data.Values.Max(v => v.Version);
 
-            if (res != null && res.VotedId != options.NodeIdentifier)
+        foreach (var nodeAddress in OtherNodeAddresses)
+        {
+            VoteResponse? response = null;
+            try
             {
-                if (res.VoteGranted)
-                {
-                    votes++;
-                }
-                else
-                {
-                    WriteToLog($"Node {options.NodeIdentifier} did not vote for {Name} in term {Term}");
-                }
+                response = await nodeClient.RequestVoteAsync(nodeAddress, CurrentTerm, myLatestCommittedLogIndex, Id);
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"Vote request failed at {nodeAddress}. {ex.Message}");
+            }
+
+
+            if (response != null && response.VoteGranted)
+            {
+                votesReceived++;
+                WriteLog($"Received vote from node #{response.VotedId} {votesReceived}/{options.NodeCount} votes received.");
+            }
+            else
+            {
+                WriteLog($"Vote request denied at {nodeAddress}.");
             }
         }
-        if (votes >= Math.Floor((double)(otherNodeAddresses.Count / 2)))
+
+        if (votesReceived > options.NodeCount / 2)
         {
             State = RaftNodeState.Leader;
-            MostRecentLeader = Name;
-            MostRecentLeaderId = options.NodeIdentifier;
-            WriteToLog($"Node {Name} became leader for term {Term}");
+            LeaderId = Id;
+            WriteLog("Became the Leader.");
             SendHeartbeats();
         }
         else
         {
-            votes = 0;
             State = RaftNodeState.Follower;
+            WriteLog("Lost election.");
         }
     }
 
-    private async Task<int> getIdFromNode(string node)
+    public bool VoteForCandidate(VoteRequest request)
     {
+        return VoteForCandidate(request.CandidateId, request.Term, request.LastLogIndex);
+    }
+
+    public bool VoteForCandidate(int candidateId, int theirTerm, long theirCommittedLogIndex)
+    {
+        if (theirTerm < CurrentTerm || theirCommittedLogIndex < CommittedIndex)
+        {
+            WriteLog($"Denied vote request from node {candidateId} in election cycle {theirTerm}. {theirCommittedLogIndex} < {CommittedIndex}");
+            return false;
+        }
+
+        if (theirTerm > CurrentTerm || theirTerm == CurrentTerm && VotedFor == candidateId)
+        {
+            State = RaftNodeState.Follower;
+            CurrentTerm = theirTerm;
+            VotedFor = candidateId;
+            ResetElectionTimeout();
+            WriteLog($"Voted for node {candidateId} in election term {theirTerm}.");
+            return true;
+        }
+        else
+        {
+            WriteLog($"Denied vote request from node {candidateId} in election cycle {theirTerm}.");
+            return false;
+        }
+    }
+
+    private bool HasElectionTimedOut()
+    {
+        return DateTime.UtcNow - lastHeartbeatReceived > TimeSpan.FromMilliseconds(electionTimeout);
+    }
+
+    private void ResetElectionTimeout()
+    {
+        electionTimeout = random.Next(5000, 10500);
+        lastHeartbeatReceived = DateTime.UtcNow;
+    }
+
+    private DateTime lastMessageClearTime = DateTime.MinValue;
+    private HashSet<string> sentMessages = new HashSet<string>();
+
+    private void WriteLog(string message)
+    {
+        if (DateTime.UtcNow - lastMessageClearTime >= TimeSpan.FromSeconds(options.LogMessageIntervalSeconds))
+        {
+            sentMessages.Clear();
+            lastMessageClearTime = DateTime.UtcNow;
+        }
+        if (!sentMessages.Contains(message))
+        {
+            logger.LogInformation($"{message}");
+            sentMessages.Add(message);
+        }
+    }
+
+    public async Task SendHeartbeats()
+    {
+        if (State != RaftNodeState.Leader)
+        {
+            return;
+        }
+        foreach (var nodeAddress in OtherNodeAddresses)
+        {
+            await RequestAppendEntriesAsync(nodeAddress, CurrentTerm, CommittedIndex, Data);
+        }
+    }
+
+    private async Task RequestAppendEntriesAsync(string nodeAddress, int currentTerm, int committedIndex, Dictionary<string, VersionedValue<string>> data)
+    {
+
+        var request = new AppendEntriesRequest
+        {
+            LeaderId = Id,
+            Term = currentTerm,
+            LeaderCommittedIndex = committedIndex,
+            Entries = data
+        };
+
         try
         {
-            logger.LogInformation($"Getting id from node {node} base address {client.BaseAddress}");
-            return int.Parse(await client.GetStringAsync($"{node}/api/node/identify"));
+            if (State != RaftNodeState.Leader)
+            {
+                WriteLog("Not the leader. Why are we sending heartbeats?");
+                return;
+            }
+
+            var success = await nodeClient.RequestAppendEntriesAsync(nodeAddress, request);
+
+            if (success)
+            {
+                WriteLog($"Heartbeat sent | Term: {currentTerm} | Committed: {committedIndex} | Occupation: {State}");
+            }
+            else
+            {
+                WriteLog("Heartbeat failed.");
+            }
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex)
         {
-            logger.LogError($"Error getting id from node {node} {ex.Message}");
-            return -1;
+            WriteLog($"Heartbeat failed. {ex.Message}");
         }
     }
 
-    private void WriteToLog(string entry)
+    public bool AppendEntry(AppendEntryRequest request)
     {
-        using (var stream = new FileStream(FilePath, FileMode.Append, FileAccess.Write, FileShare.Write))
-        using (var writer = new StreamWriter(stream))
+        return AppendEntry(request.Key, request.Value, request.Version, request.Term);
+    }
+
+    public bool AppendEntry(string key, string value, long logIndex, int term)
+    {
+
+        var mostRecentIndex = 0;
+        if (Directory.Exists(options.EntryLogPath))
         {
-            writer.WriteLine($"{DateTime.UtcNow}:{entry}");
+            mostRecentIndex = new DirectoryInfo(options.EntryLogPath).GetFiles().Length;
         }
+
+        if (logIndex > mostRecentIndex)
+        {
+            LogEntry(key, value, logIndex, term);
+        }
+        return true;
     }
 
-    private bool ElectionTimedOut()
+    private void LogEntry(string key, string value, long index, int leaderTerm)
     {
-        return DateTime.UtcNow - LastHeartbeat > TimeSpan.FromMilliseconds(ElectionTimeout);
-    }
+        if (!Directory.Exists(options.EntryLogPath))
+        {
+            Directory.CreateDirectory(options.EntryLogPath);
+        }
 
-    // send heartbeats to all other nodes
-    private async void SendHeartbeats()
-    {
-        if (!IsAlive)
+        var filePath = $"{options.EntryLogPath}/{index}.log";
+
+        if (File.Exists(filePath))
         {
             return;
         }
 
-        List<(string key, string value)> entriesToSend = new List<(string key, string value)>();
-
-
-        foreach (var node in otherNodeAddresses)
+        using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Write))
         {
-            var nodeId = await getIdFromNode(node);
-            if (nodeId != options.NodeIdentifier)
+            using (var writer = new StreamWriter(stream))
             {
-                try
-                {
-                    await client.PostAsJsonAsync($"{node}/api/node/appendEntries", new AppendEntriesRequest
-                    {
-                        Term = Term,
-                        LeaderId = options.NodeIdentifier,
-                        Entries = entriesToSend
-                    });
-                }
-                catch (HttpRequestException ex)
-                {
-                    logger.LogError($"Error sending heartbeat to node {node} {ex.Message}");
-                }
+                writer.WriteLine(leaderTerm);
+                writer.WriteLine(key);
+                writer.WriteLine(value);
             }
         }
+
+        WriteLog($"Log entry added | Index: {index} | Term: {leaderTerm} | Key: {key} | Value: {value}");
     }
 
-    public async Task<VoteResponse> ReceiveVoteRequestAsync(string nodeAddress)
+    public bool AppendEntries(AppendEntriesRequest request)
     {
-        logger.LogInformation($"Sending vote request to {nodeAddress}/api/node/receiveVoteRequest?term={Term}&voteForName={Name}");
-        try
+        if (request.Term >= CurrentTerm)
         {
-            var res = await client.GetAsync($"{nodeAddress}/api/node/receiveVoteRequest?term={Term}&voteForName={Name}");
-            if (res.IsSuccessStatusCode)
-            {
-                var voteResponse = await res.Content.ReadFromJsonAsync<VoteResponse>();
-                if (voteResponse != null)
-                {
-                    return voteResponse;
-                }
-            }
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogError($"Error sending vote request to node {nodeAddress} {ex.Message}");
-        }
-        return null;
-    }
-
-    // Receive vote request return bool if vote is granted
-    public bool ReceiveVoteRequest(int term, Guid candidateId)
-    {
-        if (!IsAlive)
-        {
-            return false;
-        }
-
-        if (term > Term || ((VotedFor == Guid.Empty || VotedFor == candidateId) && term == Term))
-        {
-            Term = term;
-            VotedFor = candidateId;
+            ResetElectionTimeout();
+            CurrentTerm = request.Term;
             State = RaftNodeState.Follower;
-            WriteToLog($"Voted for {candidateId} the term is {term}");
+            LeaderId = request.LeaderId;
+            WriteLog($"Heartbeat received | Term: {CurrentTerm} | Committed: {CommittedIndex} | Following: {LeaderId}");
+
+            foreach (var entry in request.Entries)
+            {
+                var mostRecentIndex = 0;
+                if (Directory.Exists(options.EntryLogPath))
+                {
+                    mostRecentIndex = new DirectoryInfo(options.EntryLogPath).GetFiles().Length;
+                }
+                var newEntries = request.Entries.Where(e => e.Value.Version > mostRecentIndex);
+                LogEntry(entry.Key, entry.Value.Value, entry.Value.Version, request.Term);
+            }
+
+            if (request.LeaderCommittedIndex > CommittedIndex)
+            {
+                CommitLogs(request.LeaderCommittedIndex);
+            }
             return true;
         }
-        WriteToLog($"Did not vote for {candidateId} in term {term}");
+
         return false;
     }
 
-    public void AppendEntries(AppendEntriesRequest req)
+    private void CommitLogs(int committedIndex)
     {
-        if (req.Term >= Term)
+        // Commit logs up to the committed index
+        if (Directory.Exists(options.EntryLogPath))
         {
-            Term = req.Term;
-            State = RaftNodeState.Follower;
-            LastHeartbeat = DateTime.UtcNow;
-            MostRecentLeaderId = req.LeaderId;
-
-            foreach (var entry in req.Entries)
+            var logFiles = new DirectoryInfo(options.EntryLogPath).GetFiles().OrderBy(f => f.Name);
+            foreach (var file in logFiles)
             {
-                if (!Log.ContainsKey(entry.key))
+                WriteLog(file.Name);
+                var index = int.Parse(file.Name.Split('.')[0]);
+                if (index <= committedIndex)
                 {
-                    Log.Add(entry.key, new VersionedValue<string> { Value = entry.value, Version = Log.Count });
+                    WriteLog($"Committing index {index}.");
+                    var lines = File.ReadAllLines(file.FullName);
+                    Data[lines[1]] = new VersionedValue<string> { Value = lines[2], Version = index };
+                }
+                if (index > committedIndex)
+                {
+                    WriteLog($"Deleting index {index}. Over elected majority committed index: {committedIndex}.");
+                    file.Delete();
+                }
+            }
+            CommittedIndex = committedIndex;
+        }
+    }
+
+    public async Task<VersionedValue<string>> StrongGet(string key)
+    {
+        WriteLog($"StrongGet called with key: {key}");
+        if (!IsLeader)
+        {
+            throw new Exception("Not the leader.");
+        }
+        var confirmLeaderCount = 1;
+        foreach (var nodeAddr in OtherNodeAddresses)
+        {
+            if (await nodeClient.ConfirmLeaderAsync(nodeAddr, LeaderId))
+            {
+                confirmLeaderCount++;
+            }
+            if (confirmLeaderCount > options.NodeCount / 2)
+            {
+                if (Data.ContainsKey(key))
+                {
+                    return Data[key];
                 }
                 else
                 {
-                    Log[entry.key] = new VersionedValue<string> { Value = entry.value, Version = Log[entry.key].Version }; // Update if key exists
+                    throw new Exception("Value not found.");
                 }
             }
-
-            WriteToLog($"Appended entries from {req.LeaderId}");
         }
+        throw new Exception("Not the leader.");
     }
-    // Receive a heartbeat from a leader 
-    public void ReceiveHeartbeat(int term, int leaderId)
+
+    public VersionedValue<string> EventualGet(string key)
     {
-        if (term >= Term)
+        WriteLog($"EventualGet called with key: {key}");
+
+        if (Data.ContainsKey(key))
         {
-            Term = term;
-            State = RaftNodeState.Follower;
-            LastHeartbeat = DateTime.UtcNow;
-            MostRecentLeaderId = leaderId; // Update the most recent leader
-            WriteToLog($"Received heartbeat from {leaderId}");
+            return Data[key];
         }
+
+        return new VersionedValue<string> { Value = String.Empty, Version = 0 };
     }
 
-    public async Task<bool> BroadcastReplication(string key, string value, int index)
+    public async Task CompareAndSwap(string key, string? oldValue, string newValue)
+    {
+        if (!IsLeader)
+        {
+            throw new Exception("Not the leader.");
+        }
+
+        var newIndex = 1;
+        if (Directory.Exists(options.EntryLogPath))
+        {
+            newIndex = new DirectoryInfo(options.EntryLogPath).GetFiles().Length + 1;
+        }
+        if (Data.ContainsKey(key) && oldValue != Data[key].Value)
+            throw new Exception("Value does not match.");
+
+        LogEntry(key, newValue, newIndex, CurrentTerm);
+        if (await BroadcastReplication(key, newValue, newIndex))
+        {
+            // if majority of nodes have replicated the log, update the data
+            Data[key] = new VersionedValue<string> { Value = newValue, Version = newIndex };
+            CommittedIndex = newIndex;
+            return;
+        }
+        throw new Exception("Could not replicate to majority of nodes.");
+    }
+
+    private async Task<bool> BroadcastReplication(string key, string value, int index)
     {
         var confirmReplicationCount = 1;
-        foreach (var nodeAddr in otherNodeAddresses)
+        foreach (var nodeAddr in OtherNodeAddresses)
         {
-            if (await RequestAppendEntry(nodeAddr, Term, key, value, index))
+            if (await nodeClient.RequestAppendEntryAsync(nodeAddr, CurrentTerm, key, value, index))
             {
                 confirmReplicationCount++;
             }
@@ -290,41 +419,6 @@ public class RaftNodeService : BackgroundService
             return true;
         }
         return false;
-    }
-
-    private async Task<bool> RequestAppendEntry(string nodeAddr, int term, string key, string value, int index)
-    {
-        try
-        {
-            var req = new AppendEntriesRequest
-            {
-                Term = term,
-                LeaderId = options.NodeIdentifier,
-                Entries = new List<(string key, string value)> { (key, value) }
-            };
-
-            var res = await client.PostAsJsonAsync<AppendEntriesRequest>($"{nodeAddr}/api/node/appendEntries", req);
-            if (res.IsSuccessStatusCode)
-            {
-                return true;
-            }
-        }
-        catch (Exception)
-        {
-        }
-        return false;
-    }
-
-    // Function that "Kills" the node for testing
-    public void KillNode()
-    {
-        IsAlive = false;
-    }
-
-    // Function that "Revives" the node for testing
-    public void ReviveNode()
-    {
-        IsAlive = true;
     }
 
 }

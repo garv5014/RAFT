@@ -56,16 +56,22 @@ builder.Services.AddLogging(l =>
     });
 });
 
+builder.Services.AddSingleton<IRaftNodeClient, RaftNodeClient>();
+
 builder.Services.AddSingleton<RaftNodeService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<RaftNodeService>());
 var app = builder.Build();
 
-Console.WriteLine("Node Identifier: " + app.Services.GetRequiredService<ApiOptions>().NodeIdentifier ?? "no service");
-if (app.Environment.IsDevelopment())
+try
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.MapControllers();
+    Console.WriteLine("Node Identifier: " + app.Services.GetRequiredService<ApiOptions>().NodeIdentifier ?? "no service");
+    app.Run();
 }
-app.MapControllers();
 
-app.Run();
+catch (Exception ex)
+{
+    Console.WriteLine($"Error in the startup peaches {ex.Message}");
+}
