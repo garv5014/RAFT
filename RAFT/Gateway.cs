@@ -11,7 +11,9 @@ public class Gateway
 
     private RaftNode FindLeader()
     {
-        return Nodes.FirstOrDefault(node => node.GetState() == RaftNodeState.Leader && node.isHealthy());
+        return Nodes.FirstOrDefault(node =>
+            node.GetState() == RaftNodeState.Leader && node.isHealthy()
+        );
     }
 
     public (string value, bool success) EventualGet(string key)
@@ -24,7 +26,8 @@ public class Gateway
     public (string value, bool success) StrongGet(string key)
     {
         var leader = FindLeader();
-        if (leader == null) return (null, false);
+        if (leader == null)
+            return (null, false);
 
         int acknowledgements = 1;
         foreach (var node in Nodes)
@@ -49,7 +52,8 @@ public class Gateway
     public bool CompareVersionAndSwap(string key, string expectedValue, string newValue)
     {
         var leader = FindLeader();
-        if (leader == null) return false;
+        if (leader == null)
+            return false;
 
         // Confirm leadership by majority before proceeding with the operation
         int acknowledgements = 1; // Start with 1 for the leader itself
@@ -63,7 +67,10 @@ public class Gateway
 
         if (acknowledgements == Nodes.Count)
         {
-            if (!leader.Log.ContainsKey(key) || leader.Log.TryGetValue(key, out var logEntry) && logEntry.value == expectedValue)
+            if (
+                !leader.Log.ContainsKey(key)
+                || leader.Log.TryGetValue(key, out var logEntry) && logEntry.value == expectedValue
+            )
             {
                 if (!leader.Log.ContainsKey(key))
                 {
@@ -91,5 +98,4 @@ public class Gateway
 
         return false;
     }
-
 }

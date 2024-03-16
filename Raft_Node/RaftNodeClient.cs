@@ -1,11 +1,24 @@
 using Raft_Library;
+
 namespace Raft_Node;
+
 public interface IRaftNodeClient
 {
-    Task<VoteResponse> RequestVoteAsync(string address, int term, long lastLogIndex, int candidateId);
+    Task<VoteResponse> RequestVoteAsync(
+        string address,
+        int term,
+        long lastLogIndex,
+        int candidateId
+    );
     Task<bool> RequestAppendEntriesAsync(string address, AppendEntriesRequest request);
     Task<bool> ConfirmLeaderAsync(string address, int leaderId);
-    Task<bool> RequestAppendEntryAsync(string address, int currentTerm, string key, string value, int index);
+    Task<bool> RequestAppendEntryAsync(
+        string address,
+        int currentTerm,
+        string key,
+        string value,
+        int index
+    );
 }
 
 public class RaftNodeClient : IRaftNodeClient
@@ -19,7 +32,12 @@ public class RaftNodeClient : IRaftNodeClient
         _logger = logger;
     }
 
-    public async Task<VoteResponse> RequestVoteAsync(string address, int term, long lastLogIndex, int candidateId)
+    public async Task<VoteResponse> RequestVoteAsync(
+        string address,
+        int term,
+        long lastLogIndex,
+        int candidateId
+    )
     {
         var request = new VoteRequest
         {
@@ -30,9 +48,13 @@ public class RaftNodeClient : IRaftNodeClient
 
         try
         {
-            var response = await _client.PostAsJsonAsync($"{address}/api/node/request-vote", request);
+            var response = await _client.PostAsJsonAsync(
+                $"{address}/api/node/request-vote",
+                request
+            );
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<VoteResponse>() ?? throw new Exception("Vote response was null");
+            return await response.Content.ReadFromJsonAsync<VoteResponse>()
+                ?? throw new Exception("Vote response was null");
         }
         catch (Exception ex)
         {
@@ -45,7 +67,10 @@ public class RaftNodeClient : IRaftNodeClient
     {
         try
         {
-            var response = await _client.PostAsJsonAsync($"{address}/api/node/append-entries", request);
+            var response = await _client.PostAsJsonAsync(
+                $"{address}/api/node/append-entries",
+                request
+            );
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -59,7 +84,9 @@ public class RaftNodeClient : IRaftNodeClient
     {
         try
         {
-            var leaderIdResponse = await _client.GetFromJsonAsync<int>($"{address}/api/node/whoisleader");
+            var leaderIdResponse = await _client.GetFromJsonAsync<int>(
+                $"{address}/api/node/whoisleader"
+            );
             return leaderId == leaderIdResponse;
         }
         catch (Exception ex)
@@ -69,9 +96,14 @@ public class RaftNodeClient : IRaftNodeClient
         }
     }
 
-    public async Task<bool> RequestAppendEntryAsync(string address, int term, string key, string value, int index)
+    public async Task<bool> RequestAppendEntryAsync(
+        string address,
+        int term,
+        string key,
+        string value,
+        int index
+    )
     {
-
         var request = new AppendEntryRequest
         {
             Term = term,
@@ -82,7 +114,10 @@ public class RaftNodeClient : IRaftNodeClient
 
         try
         {
-            var response = await _client.PostAsJsonAsync($"{address}/api/node/append-entry", request);
+            var response = await _client.PostAsJsonAsync(
+                $"{address}/api/node/append-entry",
+                request
+            );
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)

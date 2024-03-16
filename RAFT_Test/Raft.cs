@@ -1,10 +1,13 @@
 using RAFT;
+
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace RAFT_Test;
 
 public class RaftTestsBase
 {
     internal List<RaftNode> testNodes = [];
+
     public RaftTestsBase(int numberOfNodes, int timeDelay = 1)
     {
         for (int i = 0; i < numberOfNodes; i++)
@@ -21,6 +24,7 @@ public class RaftTestsBase
             node.Initialize();
         }
     }
+
     public static bool IsLeader(RaftNode n)
     {
         return n.GetState() == RaftNodeState.Leader && n.isHealthy();
@@ -36,9 +40,12 @@ public class RaftTestsBase
 
     internal void KillFirstXFollowers(int numberNodesToKill)
     {
-        var followers = testNodes.Where(n => n.GetState() == RaftNodeState.Follower && n.isHealthy()).ToList();
+        var followers = testNodes
+            .Where(n => n.GetState() == RaftNodeState.Follower && n.isHealthy())
+            .ToList();
 
-        if (followers.Count < numberNodesToKill) throw new Exception("no followers to kill obtain more followers");
+        if (followers.Count < numberNodesToKill)
+            throw new Exception("no followers to kill obtain more followers");
 
         for (int i = 0; i < numberNodesToKill; i++)
         {
@@ -64,9 +71,8 @@ public class RaftTestsBase
 
 public class TwoOfThree : RaftTestsBase
 {
-    public TwoOfThree() : base(3)
-    {
-    }
+    public TwoOfThree()
+        : base(3) { }
 
     [Fact]
     public async void LeaderIsElectedWithMajorityNodes()
@@ -83,9 +89,8 @@ public class TwoOfThree : RaftTestsBase
 
 public class ThreeOfFiveHealthy : RaftTestsBase
 {
-    public ThreeOfFiveHealthy() : base(5)
-    {
-    }
+    public ThreeOfFiveHealthy()
+        : base(5) { }
 
     [Fact]
     public async void LeaderIsElectedWithMajorityNodes()
@@ -104,9 +109,8 @@ public class ThreeOfFiveHealthy : RaftTestsBase
 
 public class ThreeOfFiveUnhealthy : RaftTestsBase
 {
-    public ThreeOfFiveUnhealthy() : base(5)
-    {
-    }
+    public ThreeOfFiveUnhealthy()
+        : base(5) { }
 
     [Fact]
     public async void LeaderIsNOTElected()
@@ -121,9 +125,8 @@ public class ThreeOfFiveUnhealthy : RaftTestsBase
 
 public class LeaderStaysLeader : RaftTestsBase
 {
-    public LeaderStaysLeader() : base(5)
-    {
-    }
+    public LeaderStaysLeader()
+        : base(5) { }
 
     [Fact]
     public async void LeaderIsElectedAndStays()
@@ -140,9 +143,8 @@ public class LeaderStaysLeader : RaftTestsBase
 
 public class NodeCallForElection : RaftTestsBase
 {
-    public NodeCallForElection() : base(3)
-    {
-    }
+    public NodeCallForElection()
+        : base(3) { }
 
     [Fact]
     public async void NodeCallsForElection()
@@ -160,9 +162,8 @@ public class NodeCallForElection : RaftTestsBase
 
 public class NodeContinuesAsLeaderAfterTwoFailures : RaftTestsBase
 {
-    public NodeContinuesAsLeaderAfterTwoFailures() : base(5)
-    {
-    }
+    public NodeContinuesAsLeaderAfterTwoFailures()
+        : base(5) { }
 
     [Fact]
     public async void NodeCallsLeaderContinues()
@@ -178,12 +179,11 @@ public class NodeContinuesAsLeaderAfterTwoFailures : RaftTestsBase
     }
 }
 
-
 public class ComplexScenario : RaftTestsBase
 {
-    public ComplexScenario() : base(5)
-    {
-    }
+    public ComplexScenario()
+        : base(5) { }
+
     [Fact]
     public async void Complex()
     {
@@ -222,9 +222,8 @@ public class ComplexScenario : RaftTestsBase
 
 public class BasicLogReplication : RaftTestsBase
 {
-    public BasicLogReplication() : base(3)
-    {
-    }
+    public BasicLogReplication()
+        : base(3) { }
 
     [Fact]
     public async void LogReplicationOccursAcrossAllNodes()
@@ -232,13 +231,10 @@ public class BasicLogReplication : RaftTestsBase
         StartNodes();
         await WaitForLeaderElected();
 
-
         var leader = testNodes.FirstOrDefault(n => IsLeader(n));
         Assert.NotNull(leader);
 
-
         leader.Term++;
-
 
         await Task.Delay(1000);
 
@@ -251,9 +247,8 @@ public class BasicLogReplication : RaftTestsBase
 
 public class AllLogReplication : RaftTestsBase
 {
-    public AllLogReplication() : base(3)
-    {
-    }
+    public AllLogReplication()
+        : base(3) { }
 
     [Fact]
     public async Task LogReplicationOccursAcrossAllNodes()
@@ -278,9 +273,8 @@ public class AllLogReplication : RaftTestsBase
 
 public class DeadNodeNoUpdate : RaftTestsBase
 {
-    public DeadNodeNoUpdate() : base(3)
-    {
-    }
+    public DeadNodeNoUpdate()
+        : base(3) { }
 
     [Fact]
     public async void NoUpdateOnHeartBeatToDeadNode()
@@ -299,7 +293,6 @@ public class DeadNodeNoUpdate : RaftTestsBase
         leader.Term = originalTerm + 1;
 
         await Task.Delay(100);
-
 
         foreach (var node in testNodes.Where(n => !IsLeader(n)))
         {

@@ -12,13 +12,16 @@ public class NodeController : ControllerBase
     private readonly ApiOptions _apiOptions;
     private readonly ILogger<NodeController> _logger;
 
-    public NodeController(ApiOptions apiOptions, RaftNodeService raftNodeService, ILogger<NodeController> logger)
+    public NodeController(
+        ApiOptions apiOptions,
+        RaftNodeService raftNodeService,
+        ILogger<NodeController> logger
+    )
     {
         _apiOptions = apiOptions;
         node = raftNodeService;
         _logger = logger;
     }
-
 
     [HttpGet]
     public string Get()
@@ -51,11 +54,7 @@ public class NodeController : ControllerBase
     public ActionResult<VoteResponse> RequestVote(VoteRequest request)
     {
         var votedYes = node.VoteForCandidate(request);
-        return new VoteResponse
-        {
-            VotedId = node.Id,
-            VoteGranted = votedYes
-        };
+        return new VoteResponse { VotedId = node.Id, VoteGranted = votedYes };
     }
 
     [HttpGet("whoisleader")]
@@ -96,7 +95,12 @@ public class NodeController : ControllerBase
     [HttpPost("CompareAndSwap")]
     public async Task<ActionResult> CompareAndSwap(CompareAndSwapRequest request)
     {
-        _logger.LogInformation("CompareAndSwap called with key: {key}, oldValue: {value}, newValue: {newValue}", request.Key, request.OldValue, request.NewValue);
+        _logger.LogInformation(
+            "CompareAndSwap called with key: {key}, oldValue: {value}, newValue: {newValue}",
+            request.Key,
+            request.OldValue,
+            request.NewValue
+        );
         await node.CompareAndSwap(request.Key, request.OldValue, request.NewValue);
         return Ok();
     }

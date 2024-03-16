@@ -1,4 +1,5 @@
 namespace Raft_Library;
+
 public class VoteRequest
 {
     public int CandidateId { get; set; }

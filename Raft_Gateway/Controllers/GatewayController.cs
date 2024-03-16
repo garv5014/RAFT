@@ -10,14 +10,16 @@ namespace Raft_Gateway.controllers;
 [ApiController]
 public class GatewayController : ControllerBase
 {
-
-
     private readonly ILogger<GatewayController> _logger;
     private readonly ApiOptions _options;
     private readonly HttpClient client;
     private List<string> nodeAddresses = new List<string>();
 
-    public GatewayController(ILogger<GatewayController> logger, ApiOptions options, HttpClient client)
+    public GatewayController(
+        ILogger<GatewayController> logger,
+        ApiOptions options,
+        HttpClient client
+    )
     {
         _logger = logger;
         _options = options;
@@ -58,7 +60,9 @@ public class GatewayController : ControllerBase
         _logger.LogInformation("StrongGet called with key: {key}", key);
         var leaderAddress = FindLeaderAddress();
         _logger.LogInformation($"Leader address: {leaderAddress}/api/node/strongget?key={key}");
-        var value = await client.GetFromJsonAsync<VersionedValue<string>>($"{leaderAddress}/api/node/strongget?key={key}");
+        var value = await client.GetFromJsonAsync<VersionedValue<string>>(
+            $"{leaderAddress}/api/node/strongget?key={key}"
+        );
         if (value == null)
         {
             return StatusCode(404, "Value not found in leader node.");
@@ -71,7 +75,9 @@ public class GatewayController : ControllerBase
     {
         _logger.LogInformation("EventualGet called with key: {key}", key);
         var leaderAddress = FindLeaderAddress();
-        var value = await client.GetFromJsonAsync<VersionedValue<string>>($"{leaderAddress}/api/node/eventualget?key={key}");
+        var value = await client.GetFromJsonAsync<VersionedValue<string>>(
+            $"{leaderAddress}/api/node/eventualget?key={key}"
+        );
         if (value == null)
         {
             return StatusCode(404, "Value not found");
@@ -82,9 +88,17 @@ public class GatewayController : ControllerBase
     [HttpPost("CompareAndSwap")]
     public async Task<ActionResult> CompareAndSwap(CompareAndSwapRequest request)
     {
-        _logger.LogInformation("CompareAndSwap called with key: {key}, oldValue: {oldValue}, newValue: {newValue}", request.Key, request.OldValue, request.NewValue);
+        _logger.LogInformation(
+            "CompareAndSwap called with key: {key}, oldValue: {oldValue}, newValue: {newValue}",
+            request.Key,
+            request.OldValue,
+            request.NewValue
+        );
         var leaderAddress = FindLeaderAddress();
-        var response = await client.PostAsJsonAsync($"{leaderAddress}/api/Node/CompareAndSwap", request);
+        var response = await client.PostAsJsonAsync(
+            $"{leaderAddress}/api/Node/CompareAndSwap",
+            request
+        );
         response.EnsureSuccessStatusCode();
         return Ok();
     }
@@ -113,7 +127,9 @@ public class GatewayController : ControllerBase
         {
             try
             {
-                _logger.LogInformation($"Attempt {retryCount + 1}: Getting leader id from {address}/api/Node/whoisleader");
+                _logger.LogInformation(
+                    $"Attempt {retryCount + 1}: Getting leader id from {address}/api/Node/whoisleader"
+                );
                 var response = await client.GetAsync($"{address}/api/Node/whoisleader");
                 response.EnsureSuccessStatusCode();
                 var leaderId = await response.Content.ReadAsStringAsync();
@@ -121,7 +137,9 @@ public class GatewayController : ControllerBase
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError($"Attempt {retryCount + 1}: Error getting leader id from {address}");
+                _logger.LogError(
+                    $"Attempt {retryCount + 1}: Error getting leader id from {address}"
+                );
                 retryCount++;
                 await Task.Delay(1000 * retryCount); // Wait 1, 2, 3 seconds between retries
             }
@@ -133,7 +151,9 @@ public class GatewayController : ControllerBase
     {
         var random = new Random();
         int randomIndex = random.Next(0, nodeAddresses.Count);
-        _logger.LogInformation($"here are the number of node addresses {nodeAddresses.Count} here is the random {randomIndex}");
+        _logger.LogInformation(
+            $"here are the number of node addresses {nodeAddresses.Count} here is the random {randomIndex}"
+        );
         return nodeAddresses[randomIndex];
     }
 }

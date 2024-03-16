@@ -1,4 +1,5 @@
 namespace Raft_Library;
+
 public class AppendEntriesRequest
 {
     public int LeaderId { get; set; }

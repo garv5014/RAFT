@@ -6,12 +6,16 @@ public class RaftGatewayTestsBase : RaftTestsBase
 {
     protected Gateway Gateway;
 
-    public RaftGatewayTestsBase(int numberOfNodes, int timeDelay = 1) : base(numberOfNodes, timeDelay)
+    public RaftGatewayTestsBase(int numberOfNodes, int timeDelay = 1)
+        : base(numberOfNodes, timeDelay)
     {
         Gateway = new Gateway(testNodes);
     }
 
-    public async Task<(string value, bool success)> EventualGetWithRetry(string key, int maxRetries = 10)
+    public async Task<(string value, bool success)> EventualGetWithRetry(
+        string key,
+        int maxRetries = 10
+    )
     {
         int attempts = 0;
         while (attempts < maxRetries)
@@ -30,12 +34,11 @@ public class RaftGatewayTestsBase : RaftTestsBase
     }
 }
 
-
 public class EventualGetTest : RaftGatewayTestsBase
 {
-    public EventualGetTest() : base(3) // Setup with 3 nodes
-    {
-    }
+    public EventualGetTest()
+        : base(3) // Setup with 3 nodes
+    { }
 
     [Fact]
     public async void ReturnsValueForExistingKey()
@@ -48,8 +51,6 @@ public class EventualGetTest : RaftGatewayTestsBase
 
         var (value, success) = await EventualGetWithRetry("testKey");
 
-
-
         Assert.True(success);
         Assert.Equal(expectedValue, value);
     }
@@ -57,9 +58,8 @@ public class EventualGetTest : RaftGatewayTestsBase
 
 public class StrongGetTest : RaftGatewayTestsBase
 {
-    public StrongGetTest() : base(5)
-    {
-    }
+    public StrongGetTest()
+        : base(5) { }
 
     [Fact]
     public async Task ReturnsValueForExistingKeyFromLeader()
@@ -80,14 +80,12 @@ public class StrongGetTest : RaftGatewayTestsBase
 
 public class CompareVersionAndSwapTest : RaftGatewayTestsBase
 {
-    public CompareVersionAndSwapTest() : base(3)
-    {
-    }
+    public CompareVersionAndSwapTest()
+        : base(3) { }
 
     [Fact]
     public async Task SuccessfullySwapsValueIfExpectedValueMatches()
     {
-
         var initialValue = "initial";
         var newValue = "updated";
 

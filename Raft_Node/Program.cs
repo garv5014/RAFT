@@ -13,46 +13,49 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 
-Uri collector_uri = new Uri(builder?.Configuration["CollectorURL"] ?? throw new Exception("No Collector Menu Found"));
+Uri collector_uri = new Uri(
+    builder?.Configuration["CollectorURL"] ?? throw new Exception("No Collector Menu Found")
+);
 
-builder.Services.AddOpenTelemetry()
+builder
+    .Services.AddOpenTelemetry()
     .ConfigureResource(resourceBuilder =>
     {
-        resourceBuilder
-                .AddService("Gateway");
+        resourceBuilder.AddService("Gateway");
     })
-  .WithTracing(tracing =>
-  {
-      tracing
-              .AddAspNetCoreInstrumentation() // Automatic instrumentation for ASP.NET Core
-              .AddHttpClientInstrumentation() // Automatic instrumentation for HttpClient
-              .AddEntityFrameworkCoreInstrumentation()
-              .AddSource("Node")
-              .AddOtlpExporter(options =>
-              {
-                  options.Endpoint = collector_uri; // OTLP exporter endpoint
-              });
-  }).WithMetrics(metrics =>
-  {
-      metrics.AddMeter("Microsoft.AspNetCore.Hosting")
-      .AddMeter("Microsoft.AspNetCore.Http")
-      .AddPrometheusExporter()
-      .AddOtlpExporter(options =>
-      {
-          options.Endpoint = collector_uri;
-      });
-  });
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation() // Automatic instrumentation for ASP.NET Core
+            .AddHttpClientInstrumentation() // Automatic instrumentation for HttpClient
+            .AddEntityFrameworkCoreInstrumentation()
+            .AddSource("Node")
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = collector_uri; // OTLP exporter endpoint
+            });
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddMeter("Microsoft.AspNetCore.Hosting")
+            .AddMeter("Microsoft.AspNetCore.Http")
+            .AddPrometheusExporter()
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = collector_uri;
+            });
+    });
 
 builder.Services.AddLogging(l =>
 {
     l.AddOpenTelemetry(o =>
     {
-        o.SetResourceBuilder(
-            ResourceBuilder.CreateDefault().AddService("Node"))
-        .AddOtlpExporter(options =>
-        {
-            options.Endpoint = collector_uri;
-        });
+        o.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("Node"))
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = collector_uri;
+            });
     });
 });
 
@@ -67,10 +70,12 @@ try
     app.UseSwagger();
     app.UseSwaggerUI();
     app.MapControllers();
-    Console.WriteLine("Node Identifier: " + app.Services.GetRequiredService<ApiOptions>().NodeIdentifier ?? "no service");
+    Console.WriteLine(
+        "Node Identifier: " + app.Services.GetRequiredService<ApiOptions>().NodeIdentifier
+            ?? "no service"
+    );
     app.Run();
 }
-
 catch (Exception ex)
 {
     Console.WriteLine($"Error in the startup peaches {ex.Message}");

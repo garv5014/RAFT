@@ -22,7 +22,8 @@ public class RaftNode
 
     private int TimeFactor = 1;
 
-    public Dictionary<string, (string value, int logIndex)> Log = new Dictionary<string, (string, int)>();
+    public Dictionary<string, (string value, int logIndex)> Log =
+        new Dictionary<string, (string, int)>();
     public Guid MostRecentLeader { get; set; }
 
     public RaftNode(List<RaftNode> otherNodes, int timeFactor = 1, Random? seeded = null)
@@ -61,6 +62,7 @@ public class RaftNode
     {
         return State;
     }
+
     public void Initialize()
     {
         IsAlive = true;
@@ -183,7 +185,6 @@ public class RaftNode
         }
     }
 
-
     private bool ElectionTimedOut()
     {
         return DateTime.UtcNow - LastHeartbeat > TimeSpan.FromMilliseconds(ElectionTimeout);
@@ -215,7 +216,14 @@ public class RaftNode
 
     private void WriteToLog(string entry)
     {
-        using (var stream = new FileStream(FilePath, FileMode.Append, FileAccess.Write, FileShare.Write))
+        using (
+            var stream = new FileStream(
+                FilePath,
+                FileMode.Append,
+                FileAccess.Write,
+                FileShare.Write
+            )
+        )
         using (var writer = new StreamWriter(stream))
         {
             writer.WriteLine($"{DateTime.UtcNow}:{entry}");
