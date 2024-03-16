@@ -9,6 +9,11 @@ x-raftnode-env: &raftnode_env
     TZ: America/Denver
     aspnetcore_environment: Development
     COLLECTORURL: 'http://otel_collector:4317'
+    ASPNETCORE_URLS: http://+:8080
+    ApiOptions__NodeCount: 3
+    ApiOptions__NodeServiceName: raftnode
+    ApiOptions__NodeServicePort: 8080
+    ApiOptions__LogMessageIntervalSeconds: 30 
 
 
 services: 
@@ -17,20 +22,22 @@ services:
         container_name: raftnode1
         environment: 
             <<: *raftnode_env
-            NodeIdentifier: 1
+            ApiOptions__NodeIdentifier: 1
+        ports:
+          - "5201:8080" 
     raftnode2:
         <<: *raftnode_base
         container_name: raftnode2
         environment: 
             <<: *raftnode_env
-            NodeIdentifier: 2
+            ApiOptions__NodeIdentifier: 2
 
     raftnode3:
         <<: *raftnode_base
         container_name: raftnode3
         environment: 
             <<: *raftnode_env
-            NodeIdentifier: 3
+            ApiOptions__NodeIdentifier: 3
  
     nginx:
         image: nginx:latest

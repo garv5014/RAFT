@@ -1,10 +1,10 @@
-﻿namespace Raft_Node;
+﻿namespace Raft_Node.Options;
 public class ApiOptions
 {
     public int NodeIdentifier { get; set; } = 0;
     public string NodeServiceName { get; set; } = "raftnode";
     public int NodeServicePort { get; set; } = 8080;
-    public int NodeCount { get; set; } = 3;
+    public int NodeCount { get; set; } = 0;
     public string EntryLogPath { get; set; } = "entrylogs";
     public double LogMessageIntervalSeconds { get; set; } = 10;
 }

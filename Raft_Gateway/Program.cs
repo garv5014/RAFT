@@ -6,16 +6,14 @@ using Raft_Gateway.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.AddApiOptions();
 
-
 Uri collector_uri = new Uri(builder?.Configuration["CollectorURL"] ?? throw new Exception("No Collector Menu Found"));
+
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resourceBuilder =>
     {
@@ -33,13 +31,11 @@ builder.Services.AddOpenTelemetry()
         {
             options.Endpoint = collector_uri; // OTLP exporter endpoint
         });
-      // You can add more instrumentation or exporters as needed
   }).WithMetrics(metrics =>
   {
       metrics.AddMeter("Microsoft.AspNetCore.Hosting")
       .AddMeter("Microsoft.AspNetCore.Http")
       .AddPrometheusExporter()
-      // The rest of your setup code goes here too
       .AddOtlpExporter(options =>
       {
           options.Endpoint = collector_uri;
@@ -62,12 +58,10 @@ builder.Services.AddLogging(l =>
 var app = builder.Build();
 
 app.MapControllers();
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 
 app.Run();

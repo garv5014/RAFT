@@ -3,17 +3,18 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Raft_Node;
+using Raft_Node.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddControllers();
+builder.AddApiOptions();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 
-builder.AddApiOptions();
 Uri collector_uri = new Uri(builder?.Configuration["CollectorURL"] ?? throw new Exception("No Collector Menu Found"));
+
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resourceBuilder =>
     {
@@ -31,13 +32,11 @@ builder.Services.AddOpenTelemetry()
               {
                   options.Endpoint = collector_uri; // OTLP exporter endpoint
               });
-      // You can add more instrumentation or exporters as needed
   }).WithMetrics(metrics =>
   {
       metrics.AddMeter("Microsoft.AspNetCore.Hosting")
       .AddMeter("Microsoft.AspNetCore.Http")
       .AddPrometheusExporter()
-      // The rest of your setup code goes here too
       .AddOtlpExporter(options =>
       {
           options.Endpoint = collector_uri;
@@ -57,17 +56,16 @@ builder.Services.AddLogging(l =>
     });
 });
 
-builder.Services.AddHostedService<RaftNodeService>();
-
-builder.Services.AddControllers();
+builder.Services.AddSingleton<RaftNodeService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<RaftNodeService>());
 var app = builder.Build();
 
-app.MapControllers();
-// Configure the HTTP request pipeline.
+Console.WriteLine("Node Identifier: " + app.Services.GetRequiredService<ApiOptions>().NodeIdentifier ?? "no service");
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.MapControllers();
 
 app.Run();

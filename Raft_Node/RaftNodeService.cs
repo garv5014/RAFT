@@ -1,4 +1,5 @@
 ﻿using Raft_Library;
+using Raft_Node.Options;
 
 namespace Raft_Node;
 
@@ -141,8 +142,9 @@ public class RaftNodeService : BackgroundService
             logger.LogInformation($"Getting id from node {node} base address {client.BaseAddress}");
             return int.Parse(await client.GetStringAsync($"{node}/api/node/identify"));
         }
-        catch (Exception)
+        catch (HttpRequestException ex)
         {
+            logger.LogError($"Error getting id from node {node} {ex.Message}");
             return -1;
         }
     }
@@ -169,11 +171,8 @@ public class RaftNodeService : BackgroundService
             return;
         }
 
-        // Example of deciding what entries to send - this will depend on your application logic
         List<(string key, string value)> entriesToSend = new List<(string key, string value)>();
 
-        // Determine the entries to send based on the last log index acknowledged by each follower, etc.
-        // This is simplified; in practice, you'd track what each follower has and send them what they need.
 
         foreach (var node in otherNodeAddresses)
         {
@@ -189,10 +188,10 @@ public class RaftNodeService : BackgroundService
                         Entries = entriesToSend
                     });
                 }
-                catch (Exception)
+                catch (HttpRequestException ex)
                 {
+                    logger.LogError($"Error sending heartbeat to node {node} {ex.Message}");
                 }
-                // If there are no new entries, this effectively acts as a heartbeat
             }
         }
     }
@@ -212,9 +211,9 @@ public class RaftNodeService : BackgroundService
                 }
             }
         }
-        catch (Exception)
+        catch (HttpRequestException ex)
         {
-
+            logger.LogError($"Error sending vote request to node {nodeAddress} {ex.Message}");
         }
         return null;
     }
