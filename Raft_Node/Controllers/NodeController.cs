@@ -89,7 +89,7 @@ public class NodeController : ControllerBase
     [HttpGet("EventualGet")]
     public VersionedValue<string> EventualGet([FromQuery] string key)
     {
-        _logger.LogInformation("EventualGet called with key: {key}", key);
+        _logger.LogInformation($"EventualGet called with key: {key}");
         return node.EventualGet(key);
     }
 
