@@ -10,6 +10,11 @@ x-raftnode-env: &raftnode_env
     TZ: America/Denver
     aspnetcore_environment: Development
     COLLECTORURL: 'http://garrett_otel_collector:4317'
+    ASPNETCORE_URLS: http://+:8080
+    ApiOptions__NodeCount: 3
+    ApiOptions__NodeServiceName: raftnode
+    ApiOptions__NodeServicePort: 8080
+    ApiOptions__LogMessageIntervalSeconds: 30 
 
 
 services: 
@@ -22,7 +27,7 @@ services:
         profiles:
             - manager
         networks:
-            - w-overlay-worker
+            - g-overlay-worker
     raftnode2:
         <<: *raftnode_base
         container_name: garrett_raftnode2
@@ -32,7 +37,7 @@ services:
         profiles:
             - manager
         networks:
-            - w-overlay
+            - g-overlay
     raftnode3:
         <<: *raftnode_base
         container_name: garrett_raftnode3
@@ -42,7 +47,7 @@ services:
         profiles:
             - worker
         networks:
-            - w-overlay-worker
+            - g-overlay-worker
 
     garrett_gateway: 
         container_name: garrett_gateway
@@ -57,7 +62,7 @@ services:
         profiles:
           - manager
         networks:
-          - w-overlay
+          - g-overlay
             
     swag:
         image: lscr.io/linuxserver/swag
@@ -81,7 +86,7 @@ services:
         profiles:
           - manager
         networks:
-          - w-overlay
+          - g-overlay
 
     garrett_otel_collector:
         image: otel/opentelemetry-collector-contrib
@@ -90,7 +95,7 @@ services:
         volumes:
             - ./configs/otel-collector-config.yml:/etc/otelcol-contrib/config.yml
         networks:
-          - w-overlay
+          - g-overlay
 
     garrett_zipkin:
         image: ghcr.io/openzipkin/zipkin-slim:${TAG:-latest}
@@ -98,12 +103,12 @@ services:
         restart: always
         # Environment settings are defined here https://github.com/openzipkin/zipkin/blob/master/zipkin-server/README.md#environment-variables
         environment:
-            - STORAgarrett_TYPE=mem
+            - STORAGE_TYPE=mem
         # ports:
         #   # Port used for the Zipkin UI and HTTP Api
         #   - 9411:9411
         networks:
-            - w-overlay
+            - g-overlay
 
     garrett_prometheus:
         image: prom/prometheus
@@ -116,7 +121,7 @@ services:
         volumes:
             - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
         networks:
-            - w-overlay
+            - g-overlay
     garrett_grafana:
         build:
             context: .
@@ -135,7 +140,7 @@ services:
             - ./configs/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
             - ./configs/grafana.ini:/etc/grafana/grafana.ini
         networks:
-            - w-overlay
+            - g-overlay
     garrett_loki:
         image: grafana/loki:2.9.0
         command: -config.file=/etc/loki/local-config.yml
@@ -146,14 +151,14 @@ services:
         # ports:
         #   - "3100:3100"
         networks:
-            - w-overlay
+            - g-overlay
 
 networks:
-  w-overlay:
-    name: w-overlay
+  g-overlay:
+    name: g-overlay
     driver: overlay
     attachable: true
-  w-overlay-worker:
-    name: w-overlay
+  g-overlay-worker:
+    name: g-overlay
     driver: overlay
     external: true
