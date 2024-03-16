@@ -28,7 +28,7 @@ public class RaftNodeServiceTests
     }
 
     [Fact]
-    public async Task StartElection_ShouldSetStateToCandidate_AndIncrementTerm()
+    public async Task StartElection_ShouldSetStateToFollower_AndIncrementTerm()
     {
         // Arrange
         mockNodeClient
@@ -47,7 +47,7 @@ public class RaftNodeServiceTests
         await service.StartElection();
 
         // Assert
-        Assert.Equal(RaftNodeState.Leader, service.State);
+        Assert.Equal(RaftNodeState.Follower, service.State);
         Assert.Equal(1, service.CurrentTerm);
     }
 

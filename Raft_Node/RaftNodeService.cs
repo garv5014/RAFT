@@ -74,7 +74,7 @@ public class RaftNodeService : BackgroundService
                 }
                 else if (HasElectionTimedOut())
                 {
-                    WriteLog("Election timed out.");
+                    WriteToLog("Election timed out.");
                     await StartElection();
                 }
             }
@@ -98,7 +98,7 @@ public class RaftNodeService : BackgroundService
             CurrentTerm++;
         }
         ResetElectionTimeout();
-        WriteLog($"Running for election cycle {CurrentTerm}. Requesting votes from other nodes.");
+        WriteToLog($"Running for election cycle {CurrentTerm}. Requesting votes from other nodes.");
         int votesReceived = 1; // vote for self
         VotedFor = Id;
         long myLatestCommittedLogIndex = 0;
@@ -119,19 +119,19 @@ public class RaftNodeService : BackgroundService
             }
             catch (Exception ex)
             {
-                WriteLog($"Vote request failed at {nodeAddress}. {ex.Message}");
+                WriteToLog($"Vote request failed at {nodeAddress}. {ex.Message}");
             }
 
             if (response != null && response.VoteGranted)
             {
                 votesReceived++;
-                WriteLog(
+                WriteToLog(
                     $"Received vote from node #{response.VotedId} {votesReceived}/{options.NodeCount} votes received."
                 );
             }
             else
             {
-                WriteLog($"Vote request denied at {nodeAddress}.");
+                WriteToLog($"Vote request denied at {nodeAddress}.");
             }
         }
 
@@ -139,13 +139,13 @@ public class RaftNodeService : BackgroundService
         {
             State = RaftNodeState.Leader;
             LeaderId = Id;
-            WriteLog("Became the Leader.");
+            WriteToLog("Became the Leader.");
             await SendHeartbeats();
         }
         else
         {
             State = RaftNodeState.Follower;
-            WriteLog("Lost election.");
+            WriteToLog("Lost election.");
         }
     }
 
@@ -158,7 +158,7 @@ public class RaftNodeService : BackgroundService
     {
         if (theirTerm < CurrentTerm || theirCommittedLogIndex < CommittedIndex)
         {
-            WriteLog(
+            WriteToLog(
                 $"Denied vote request from node {candidateId} in election cycle {theirTerm}. {theirCommittedLogIndex} < {CommittedIndex}"
             );
             return false;
@@ -170,12 +170,14 @@ public class RaftNodeService : BackgroundService
             CurrentTerm = theirTerm;
             VotedFor = candidateId;
             ResetElectionTimeout();
-            WriteLog($"Voted for node {candidateId} in election term {theirTerm}.");
+            WriteToLog($"Voted for node {candidateId} in election term {theirTerm}.");
             return true;
         }
         else
         {
-            WriteLog($"Denied vote request from node {candidateId} in election cycle {theirTerm}.");
+            WriteToLog(
+                $"Denied vote request from node {candidateId} in election cycle {theirTerm}."
+            );
             return false;
         }
     }
@@ -194,7 +196,7 @@ public class RaftNodeService : BackgroundService
     private DateTime lastMessageClearTime = DateTime.MinValue;
     private HashSet<string> sentMessages = new HashSet<string>();
 
-    private void WriteLog(string message)
+    private void WriteToLog(string message)
     {
         if (
             DateTime.UtcNow - lastMessageClearTime
@@ -242,7 +244,7 @@ public class RaftNodeService : BackgroundService
         {
             if (State != RaftNodeState.Leader)
             {
-                WriteLog("Not the leader. Why are we sending heartbeats?");
+                WriteToLog("Not the leader. Why are we sending heartbeats?");
                 return;
             }
 
@@ -250,18 +252,18 @@ public class RaftNodeService : BackgroundService
 
             if (success)
             {
-                WriteLog(
+                WriteToLog(
                     $"Heartbeat sent | Term: {currentTerm} | Committed: {committedIndex} | Occupation: {State}"
                 );
             }
             else
             {
-                WriteLog("Heartbeat failed.");
+                WriteToLog("Heartbeat failed.");
             }
         }
         catch (Exception ex)
         {
-            WriteLog($"Heartbeat failed. {ex.Message}");
+            WriteToLog($"Heartbeat failed. {ex.Message}");
         }
     }
 
@@ -316,7 +318,7 @@ public class RaftNodeService : BackgroundService
             }
         }
 
-        WriteLog(
+        WriteToLog(
             $"Log entry added | Index: {index} | Term: {leaderTerm} | Key: {key} | Value: {value}"
         );
     }
@@ -329,7 +331,7 @@ public class RaftNodeService : BackgroundService
             CurrentTerm = request.Term;
             State = RaftNodeState.Follower;
             LeaderId = request.LeaderId;
-            WriteLog(
+            WriteToLog(
                 $"Heartbeat received | Term: {CurrentTerm} | Committed: {CommittedIndex} | Following: {LeaderId}"
             );
 
@@ -362,11 +364,11 @@ public class RaftNodeService : BackgroundService
             var logFiles = new DirectoryInfo(options.EntryLogPath).GetFiles().OrderBy(f => f.Name);
             foreach (var file in logFiles)
             {
-                WriteLog(file.Name);
+                WriteToLog(file.Name);
                 var index = int.Parse(file.Name.Split('.')[0]);
                 if (index <= committedIndex)
                 {
-                    WriteLog($"Committing index {index}.");
+                    WriteToLog($"Committing index {index}.");
                     var lines = File.ReadAllLines(file.FullName);
                     Data[lines[1]] = new VersionedValue<string>
                     {
@@ -376,7 +378,7 @@ public class RaftNodeService : BackgroundService
                 }
                 if (index > committedIndex)
                 {
-                    WriteLog(
+                    WriteToLog(
                         $"Deleting index {index}. Over elected majority committed index: {committedIndex}."
                     );
                     file.Delete();
@@ -388,7 +390,7 @@ public class RaftNodeService : BackgroundService
 
     public async Task<VersionedValue<string>> StrongGet(string key)
     {
-        WriteLog($"StrongGet called with key: {key}");
+        WriteToLog($"StrongGet called with key: {key}");
         if (!IsLeader)
         {
             throw new Exception("Not the leader.");
@@ -417,7 +419,7 @@ public class RaftNodeService : BackgroundService
 
     public VersionedValue<string> EventualGet(string key)
     {
-        WriteLog($"EventualGet called with key: {key}");
+        WriteToLog($"EventualGet called with key: {key}");
 
         if (Data.ContainsKey(key))
         {

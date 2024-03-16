@@ -14,6 +14,7 @@ jobs:
   
   deploy:
     runs-on: [self-hosted, alexoffice5]
+    needs: test
     steps:
       - name: checkout repo
         uses: actions/checkout@v3
