@@ -10,6 +10,11 @@
     }
 </ul>
 @code {
+    protected async override Task OnInitializedAsync()
+    {
+        await Task.Delay(1000);
+    }
+
     private List<Product> products = new List<Product>
     {
         new Product { Name = "Water Bottle" },

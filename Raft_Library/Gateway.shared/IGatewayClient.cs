@@ -6,5 +6,5 @@ public interface IGatewayClient
 {
     Task<VersionedValue<string>> StrongGet(string key);
     Task<VersionedValue<string>> EventualGet(string key);
-    Task CompareAndSwap(CompareAndSwapRequest req);
+    Task<HttpResponseMessage> CompareAndSwap(CompareAndSwapRequest req);
 }
