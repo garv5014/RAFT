@@ -11,7 +11,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raft_Gateway", "Raft_Gatewa
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raft_Node", "Raft_Node\Raft_Node.csproj", "{F4570B63-FAD7-4E11-82A4-98F1E1BECF57}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raft_Library", "Raft_Library\Raft_Library.csproj", "{F30F99A1-74C5-4FA9-B53A-245CF8754240}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raft_Library", "Raft_Library\Raft_Library.csproj", "{F30F99A1-74C5-4FA9-B53A-245CF8754240}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raft_Shop", "Raft_Shop\Raft_Shop\Raft_Shop.csproj", "{D16CAD56-6AC3-4A69-A74D-5E43C4035EB3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raft_Shop.Client", "Raft_Shop\Raft_Shop.Client\Raft_Shop.Client.csproj", "{3AA3E3DC-79AB-491A-B5A1-8C231A78FE29}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +43,14 @@ Global
 		{F30F99A1-74C5-4FA9-B53A-245CF8754240}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F30F99A1-74C5-4FA9-B53A-245CF8754240}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F30F99A1-74C5-4FA9-B53A-245CF8754240}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D16CAD56-6AC3-4A69-A74D-5E43C4035EB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D16CAD56-6AC3-4A69-A74D-5E43C4035EB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D16CAD56-6AC3-4A69-A74D-5E43C4035EB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D16CAD56-6AC3-4A69-A74D-5E43C4035EB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3AA3E3DC-79AB-491A-B5A1-8C231A78FE29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3AA3E3DC-79AB-491A-B5A1-8C231A78FE29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3AA3E3DC-79AB-491A-B5A1-8C231A78FE29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3AA3E3DC-79AB-491A-B5A1-8C231A78FE29}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

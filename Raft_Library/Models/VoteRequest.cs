@@ -1,4 +1,4 @@
-namespace Raft_Library;
+namespace Raft_Library.Models;
 
 public class VoteRequest
 {

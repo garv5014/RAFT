@@ -1,4 +1,4 @@
-using Raft_Library;
+using Raft_Library.Models;
 
 namespace Raft_Node;
 

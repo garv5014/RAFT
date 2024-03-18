@@ -1,0 +1,20 @@
+﻿@page "/inventory"
+@using Raft_Library.Shop.shared
+<h3>Inventory</h3>
+
+<ul>
+    @foreach (var product in products)
+    {
+        <li>@product.Name - $@product.Price</li>
+    }
+</ul>
+@code {
+    private List<Product> products = new List<Product>
+    {
+        new Product { Name = "Water Bottle" },
+        new Product { Name = "Notebook" },
+        new Product { Name = "Pen" },
+        new Product { Name = "T-shirt" },
+        new Product { Name = "Coffee Mug" }
+    };
+}

@@ -1,0 +1,21 @@
+﻿@page "/stock"
+
+<h3>Stock of Product</h3>
+
+<select @bind="selectedProduct">
+    @foreach (var product in products)
+    {
+        <option value="@product.Name">@product.Name</option>
+    }
+</select>
+<button @onclick="GetStock">View Stock</button>
+<!-- Display stock and provide options to adjust -->
+@code {
+    string selectedProduct;
+    int stock;
+
+    void GetStock()
+    {
+        // Placeholder for method to retrieve stock from backend
+    }
+}

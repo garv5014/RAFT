@@ -1,0 +1,14 @@
+﻿<h3>Balance of User</h3>
+
+<input @bind="username" placeholder="Username" />
+<button @onclick="GetBalance">View Balance</button>
+<!-- Display balance and provide options to deposit/withdraw -->
+@code {
+    string username;
+    decimal balance;
+
+    void GetBalance()
+    {
+        // Placeholder for method to retrieve balance from backend
+    }
+}

@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Raft_Library;
+using Raft_Library.Models;
 using Raft_Node.Options;
 
 namespace Raft_Node.controllers;

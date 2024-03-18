@@ -63,6 +63,16 @@ services:
         depends_on:
             - nginx
 
+    shop:
+        container_name: shop
+        build:
+            context: ./../../ 
+            dockerfile: 'Raft_Shop/Raft_Shop/Dockerfile'
+        environment:
+            TZ: America/Denver
+            COLLECTORURL: 'http://otel_collector:4317'
+            aspnetcore_environment: Development
+
     otel_collector:
         image: otel/opentelemetry-collector-contrib
         container_name: otel_collector
