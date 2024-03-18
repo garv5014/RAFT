@@ -14,7 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Raft_Library\Raft_Library.csproj" />
-    <ProjectReference Include="..\Raft_Shop\Raft_Shop.csproj" />
   </ItemGroup>
 
 </Project>
