@@ -2,7 +2,13 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Raft_Library.Gateway.shared;
+using Raft_Library.Shop.shared;
+using Raft_Shop.Client;
+using Raft_Shop.Client.Pages;
 using Raft_Shop.Components;
+using Raft_Shop.Options;
+using Raft_Shop.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +64,13 @@ builder.Services.AddLogging(l =>
     });
 });
 
+builder.Services.AddHttpClient();
+builder.AddApiOptions();
+
+builder.Services.AddScoped<IGatewayClient, GatewayService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IInventoryService, ShopInventoryService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -75,6 +88,6 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddInteractiveWebAssemblyRenderMode();
-
+    .AddInteractiveWebAssemblyRenderMode()
+    .AddAdditionalAssemblies(typeof(InventoryPage).Assembly);
 app.Run();

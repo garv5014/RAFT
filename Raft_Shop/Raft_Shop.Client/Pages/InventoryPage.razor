@@ -1,26 +1,60 @@
 ﻿@page "/inventory"
 @using Raft_Library.Shop.shared
 @rendermode InteractiveWebAssembly
+@inject IInventoryService InventoryService
+
 <h3>Inventory</h3>
 
-<ul>
+<div class="row">
     @foreach (var product in products)
     {
-        <li>@product.Name - $@product.Price</li>
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">@product.Name</h5>
+                    <p class="card-text">Price: $@product.Price</p>
+                    <p class="card-text">Stock: @product.Stock</p>
+                    <button class="btn btn-primary" @onclick="() => AddToStock(product)">Add Stock</button>
+                    <button class="btn btn-danger" @onclick="() => RemoveFromStock(product)">Remove Stock</button>
+                </div>
+            </div>
+        </div>
     }
-</ul>
-@code {
-    protected async override Task OnInitializedAsync()
-    {
-        await Task.Delay(1000);
-    }
+</div>
 
+@code {
     private List<Product> products = new List<Product>
     {
         new Product { Name = "Water Bottle" },
-        new Product { Name = "Notebook" },
-        new Product { Name = "Pen" },
-        new Product { Name = "T-shirt" },
-        new Product { Name = "Coffee Mug" }
+        new Product { Name = "Notebook"},
+        new Product { Name = "Pen"},
+        new Product { Name = "T-shirt"},
+        new Product { Name = "Coffee Mug"}
     };
+
+    protected override async Task OnInitializedAsync()
+    {
+        foreach (var product in products)
+        {
+            product.Stock = await InventoryService.GetItemStockAsync(product.Name);
+        }
+    }
+
+    private async Task AddToStock(Product product)
+    {
+        if (await InventoryService.AddItemToStockAsync(product.Name, 1))
+        {
+            product.Stock += 1;
+        }
+        StateHasChanged();
+    }
+
+    private async Task RemoveFromStock(Product product)
+    {
+        if (await InventoryService.RemoveItemFromStockAsync(product.Name, 1))
+        {
+            product.Stock = Math.Max(0, product.Stock - 1); // Prevent negative stock display
+        }
+        StateHasChanged();
+    }
 }

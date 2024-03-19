@@ -1,6 +1,6 @@
-﻿using Raft_Library.Gateway.shared;
+﻿using System.Net;
+using Raft_Library.Gateway.shared;
 using Raft_Library.Models;
-using Raft_Shop.Options;
 
 namespace Raft_Shop.Client;
 
@@ -22,11 +22,21 @@ public class GatewayService : IGatewayClient
 
     public async Task<VersionedValue<string>> EventualGet(string key)
     {
-        throw new NotImplementedException();
+        var response = await _client.GetFromJsonAsync<VersionedValue<string>>(
+            $"api/Gateway/EventualGet?key={key}"
+        );
+        return response;
     }
 
     public async Task<VersionedValue<string>> StrongGet(string key)
     {
-        throw new NotImplementedException();
+        var response = await _client.GetAsync($"api/Gateway/StrogGet?key={key}");
+
+        if (response.StatusCode != HttpStatusCode.OK)
+        {
+            Console.WriteLine($"StrongGet failed {response.StatusCode} ");
+            return null;
+        }
+        return await response.Content.ReadFromJsonAsync<VersionedValue<string>>();
     }
 }
