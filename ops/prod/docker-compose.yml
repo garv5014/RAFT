@@ -99,7 +99,7 @@ services:
             aspnetcore_environment: Development
             GatewayAddress: 'http://gateway:8080'
         depends_on:
-            - nginx
+            - swag
         profiles:
           - manager
         networks:
