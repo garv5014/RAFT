@@ -88,6 +88,23 @@ services:
         networks:
           - g-overlay
 
+    garrett_shop:
+        container_name: garrett_shop
+        build:
+            context: ./../../ 
+            dockerfile: 'Raft_Shop/Raft_Shop/Dockerfile'
+        environment:
+            TZ: America/Denver
+            COLLECTORURL: 'http://otel_collector:4317'
+            aspnetcore_environment: Development
+            GatewayAddress: 'http://gateway:8080'
+        depends_on:
+            - nginx
+        profiles:
+          - manager
+        networks:
+          - g-overlay
+
     garrett_otel_collector:
         image: otel/opentelemetry-collector-contrib
         container_name: garrett_otel_collector
