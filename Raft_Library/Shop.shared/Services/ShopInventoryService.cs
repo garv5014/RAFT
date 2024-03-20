@@ -1,8 +1,7 @@
 ﻿using Raft_Library.Gateway.shared;
 using Raft_Library.Models;
-using Raft_Library.Shop.shared;
 
-namespace Raft_Shop.Services;
+namespace Raft_Library.Shop.shared.Services;
 
 public class ShopInventoryService : IInventoryService
 {
@@ -16,12 +15,22 @@ public class ShopInventoryService : IInventoryService
     public async Task<bool> AddItemToStockAsync(string itemId, int quantity)
     {
         var itemStock = await gatewayService.StrongGet(itemId); // or EventualGet for eventual consistency
-        if (itemStock == null)
-            return false;
 
-        int currentStock = int.Parse(itemStock.Value);
-        int newStock = currentStock + quantity;
-        var updated = await TryUpdateStockAsync(itemId, newStock, itemStock.Value);
+        bool updated;
+        if (itemStock == null)
+        {
+            updated = await TryUpdateStockAsync(itemId, quantity, null);
+        }
+        else
+        {
+            int currentStock = int.Parse(itemStock.Value);
+            int newStock = currentStock + quantity;
+            updated = await TryUpdateStockAsync(
+                itemId,
+                newStock,
+                itemStock == null ? null : itemStock.Value
+            );
+        }
         return updated;
     }
 
@@ -43,7 +52,7 @@ public class ShopInventoryService : IInventoryService
         return updated;
     }
 
-    private async Task<bool> TryUpdateStockAsync(string itemId, int newStock, string oldValue)
+    private async Task<bool> TryUpdateStockAsync(string itemId, int newStock, string? oldValue)
     {
         var compareAndSwapRequest = new CompareAndSwapRequest
         {
@@ -60,25 +69,26 @@ public class ShopInventoryService : IInventoryService
 
         return await ExecuteWithRetryAsync(
             operation,
-            TimeSpan.FromSeconds(100),
-            TimeSpan.FromMilliseconds(500)
+            TimeSpan.FromMilliseconds(500),
+            maxRetries: 3
         );
     }
 
     private async Task<bool> ExecuteWithRetryAsync(
         Func<Task<bool>> operation,
-        TimeSpan timeout,
-        TimeSpan delayBetweenRetries
+        TimeSpan delayBetweenRetries,
+        int maxRetries = 3
     )
     {
-        var startTime = DateTime.UtcNow;
-        while (DateTime.UtcNow - startTime < timeout)
+        int attempt = 0;
+        while (attempt < maxRetries)
         {
             if (await operation())
                 return true; // Success
             await Task.Delay(delayBetweenRetries);
+            attempt++;
         }
 
-        return false; // Timeout
+        return false; // Exceeded max retries
     }
 }

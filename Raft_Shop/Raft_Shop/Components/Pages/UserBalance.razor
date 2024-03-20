@@ -1,14 +1,82 @@
-﻿<h3>Balance of User</h3>
+﻿@page "/user-balance"
+@using Raft_Library.Shop.shared
+@inject IUserService UserService
+@rendermode InteractiveServer
 
-<input @bind="username" placeholder="Username" />
-<button @onclick="GetBalance">View Balance</button>
-<!-- Display balance and provide options to deposit/withdraw -->
+<div class="container mt-5">
+    <h3 class="text-center mb-4">Balance of User</h3>
+
+    <div class="row justify-content-center mb-2">
+        <div class="col-md-4">
+            <input @bind="username" class="form-control" placeholder="Username" />
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-primary w-100" @onclick="GetBalance">View Balance</button>
+        </div>
+    </div>
+
+    <div class="row justify-content-center mb-2">
+        <div class="col-md-4">
+            <input @bind="amount" type="number" class="form-control" placeholder="Amount" />
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-success me-2" @onclick="Deposit">Deposit</button>
+            <button class="btn btn-warning" @onclick="Withdraw">Withdraw</button>
+        </div>
+    </div>
+
+    @if (balance != null)
+    {
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+                <p>Current Balance: $@balance</p>
+            </div>
+        </div>
+    }
+</div>
+
 @code {
     string username;
-    decimal balance;
+    decimal? balance;
+    decimal amount;
 
-    void GetBalance()
+    async Task GetBalance()
     {
-        // Placeholder for method to retrieve balance from backend
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            balance = await UserService.GetUserBalanceAsync(username);
+        }
+    }
+
+    async Task Deposit()
+    {
+        if (!string.IsNullOrWhiteSpace(username) && amount > 0)
+        {
+            var success = await UserService.DepositBalanceAsync(username, amount);
+            if (success)
+            {
+                await GetBalance(); // Update balance display
+            }
+            else
+            {
+                // Handle deposit failure (e.g., display an error message)
+            }
+        }
+    }
+
+    async Task Withdraw()
+    {
+        if (!string.IsNullOrWhiteSpace(username) && amount > 0)
+        {
+            var success = await UserService.WithdrawBalanceAsync(username, amount);
+            if (success)
+            {
+                await GetBalance(); // Update balance display
+            }
+            else
+            {
+                // Handle withdrawal failure (e.g., insufficient funds)
+            }
+        }
     }
 }

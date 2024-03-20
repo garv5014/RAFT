@@ -3,7 +3,9 @@
 public interface IUserService
 {
     Task<decimal> GetUserBalanceAsync(string userId);
-    Task<bool> UpdateUserBalanceAsync(string userId, decimal amountChange);
+    Task<bool> DepositBalanceAsync(string userId, decimal amountChange);
+
+    Task<bool> WithdrawBalanceAsync(string userId, decimal amountChange);
     Task<OrderStatus> GetOrderStatusAsync(string orderId);
     Task<OrderInfo> GetOrderInfoAsync(string orderId);
     Task<IEnumerable<OrderInfo>> GetPendingOrdersAsync(string userId);

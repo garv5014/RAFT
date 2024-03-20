@@ -244,7 +244,7 @@ public class RaftNodeService : BackgroundService
         {
             if (State != RaftNodeState.Leader)
             {
-                WriteToLog("Not the leader. Why are we sending heartbeats?");
+                WriteToLog("Not the leader");
                 return;
             }
 

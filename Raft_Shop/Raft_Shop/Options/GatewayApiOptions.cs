@@ -2,9 +2,7 @@
 
 public class GatewayApiOptions
 {
-    public string ServiceName { get; set; } = "Gateway";
-
-    public int ServicePort { get; set; } = 8080;
+    public string GatewayAddress { get; set; } = $"http://Gateway:8080";
 }
 
 public static class ApiOptionsExtensions

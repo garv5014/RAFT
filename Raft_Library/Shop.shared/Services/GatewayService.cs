@@ -1,17 +1,17 @@
 ﻿using System.Net;
+using System.Net.Http.Json;
 using Raft_Library.Gateway.shared;
 using Raft_Library.Models;
 
-namespace Raft_Shop.Client;
+namespace Raft_Library.Shop.shared.Services;
 
 public class GatewayService : IGatewayClient
 {
     private HttpClient _client;
 
-    public GatewayService(HttpClient client, GatewayApiOptions apiOptions)
+    public GatewayService(HttpClient client)
     {
         _client = client;
-        _client.BaseAddress = new Uri($"http://{apiOptions.ServiceName}:{apiOptions.ServicePort}");
     }
 
     public async Task<HttpResponseMessage> CompareAndSwap(CompareAndSwapRequest req)
@@ -22,15 +22,20 @@ public class GatewayService : IGatewayClient
 
     public async Task<VersionedValue<string>> EventualGet(string key)
     {
-        var response = await _client.GetFromJsonAsync<VersionedValue<string>>(
-            $"api/Gateway/EventualGet?key={key}"
-        );
-        return response;
+        var response = await _client.GetAsync($"api/Gateway/EventualGet?key={key}");
+
+        if (response.StatusCode != HttpStatusCode.OK)
+        {
+            Console.WriteLine($"EventualGet failed {response.StatusCode} ");
+            return null;
+        }
+        return await response.Content.ReadFromJsonAsync<VersionedValue<string>>();
     }
 
     public async Task<VersionedValue<string>> StrongGet(string key)
     {
-        var response = await _client.GetAsync($"api/Gateway/StrogGet?key={key}");
+        Console.WriteLine($"StrongGet {_client.BaseAddress}");
+        var response = await _client.GetAsync($"api/Gateway/StrongGet?key={key}");
 
         if (response.StatusCode != HttpStatusCode.OK)
         {

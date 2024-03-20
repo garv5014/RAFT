@@ -4,11 +4,9 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Raft_Library.Gateway.shared;
 using Raft_Library.Shop.shared;
-using Raft_Shop.Client;
+using Raft_Library.Shop.shared.Services;
 using Raft_Shop.Client.Pages;
 using Raft_Shop.Components;
-using Raft_Shop.Options;
-using Raft_Shop.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,10 +62,19 @@ builder.Services.AddLogging(l =>
     });
 });
 
-builder.Services.AddHttpClient();
-builder.AddApiOptions();
+builder.Services.AddHttpClient(
+    "GatewayClient",
+    client =>
+        client.BaseAddress = new Uri(
+            builder.Configuration["GatewayAddress"]
+                ?? throw new InvalidOperationException("Gateway address not found.")
+        )
+);
+Console.WriteLine($"here is the uri address {builder.Configuration["GatewayAddress"]}");
 
-builder.Services.AddScoped<IGatewayClient, GatewayService>();
+builder.Services.AddScoped<IGatewayClient, GatewayService>(sp => new GatewayService(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("GatewayClient")
+));
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IInventoryService, ShopInventoryService>();
 
