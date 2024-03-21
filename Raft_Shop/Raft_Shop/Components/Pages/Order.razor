@@ -1,0 +1,97 @@
+﻿@page "/place-order"
+@using Raft_Library.Shop.shared
+@inject IUserService UserService
+@rendermode InteractiveServer
+
+<h3>Place Order</h3>
+
+<div class="container">
+    <div class="row mb-3">
+        <div class="col">
+            <input @bind="username" placeholder="Username" class="form-control" />
+        </div>
+    </div>
+
+    <h4>Products</h4>
+    <div class="row">
+        @foreach (var product in products)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">@product.Name</h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button @onclick="() => RemoveFromOrder(product.Name)" class="btn btn-danger">-</button>
+                            <span>@(order.ContainsKey(product.Name) ? order[product.Name].ToString() : "0")</span>
+                            <button @onclick="() => AddToOrder(product)" class="btn btn-primary">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (order.Any())
+    {
+        <div class="mt-4">
+            <h4>Current Order</h4>
+            @foreach (var item in order)
+            {
+                <div>@item.Key - Quantity: @item.Value</div>
+            }
+            <button @onclick="SubmitOrder" class="btn btn-success mt-2" disabled="@(!CanSubmit)">Submit Order</button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Product> products = new List<Product>
+    {
+        new Product { Name = "Water Bottle" },
+        new Product { Name = "Notebook" },
+        new Product { Name = "Pen" },
+        new Product { Name = "T-shirt" },
+        new Product { Name = "Coffee Mug" }
+    };
+    private Dictionary<string, int> order = new Dictionary<string, int>();
+    private string username = string.Empty;
+
+    private void AddToOrder(Product product)
+    {
+        if (order.ContainsKey(product.Name))
+        {
+            order[product.Name] += 1;
+        }
+        else
+        {
+            order.Add(product.Name, 1);
+        }
+    }
+
+    private void RemoveFromOrder(string productName)
+    {
+        if (order.ContainsKey(productName))
+        {
+            order[productName] -= 1;
+            if (order[productName] <= 0)
+            {
+                order.Remove(productName);
+            }
+        }
+    }
+
+    private async Task SubmitOrder()
+    {
+        var orderId = Guid.NewGuid().ToString(); // Generate a new Order ID
+        await UserService.CreateOrderAsync(orderId, order, username);
+        order.Clear(); // Clear the order once submitted
+        username = string.Empty; // Optionally clear the username
+    }
+
+    private bool CanSubmit => order.Any() && !string.IsNullOrWhiteSpace(username);
+
+    public class Product
+    {
+        public string Name { get; set; }
+    }
+}

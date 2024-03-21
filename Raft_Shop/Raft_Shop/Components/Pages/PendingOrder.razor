@@ -1,0 +1,48 @@
+﻿@page "/pending-orders"
+@using Raft_Library.Shop.shared
+@inject IUserService UserService
+@rendermode InteractiveServer
+
+<h3>Pending Orders</h3>
+
+@if (pendingOrders == null)
+{
+    <p><em>Loading...</em></p>
+}
+
+@if (pendingOrders?.Count == 0)
+{
+    <p><em>No orders</em></p>
+}
+else
+{
+    <div class="row">
+        @foreach (var order in pendingOrders)
+        {
+            <div class="col-sm-4 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Order for @order.Purchaser</h5>
+                        <p class="card-text">
+                            @foreach (var item in order.Products)
+                            {
+                                <div>@item.Key - Quantity: @item.Value ($@item.Value)</div>
+                            }
+                        </p>
+                        <button class="btn btn-primary">Process</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<OrderInfo> pendingOrders = new List<OrderInfo>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var orders = await UserService.GetAllPendingOrdersAsync();
+        pendingOrders = orders.ToList();
+    }
+}

@@ -13,9 +13,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raft_Node", "Raft_Node\Raft
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raft_Library", "Raft_Library\Raft_Library.csproj", "{F30F99A1-74C5-4FA9-B53A-245CF8754240}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raft_Shop", "Raft_Shop\Raft_Shop\Raft_Shop.csproj", "{D16CAD56-6AC3-4A69-A74D-5E43C4035EB3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raft_Shop", "Raft_Shop\Raft_Shop\Raft_Shop.csproj", "{D16CAD56-6AC3-4A69-A74D-5E43C4035EB3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raft_Shop.Client", "Raft_Shop\Raft_Shop.Client\Raft_Shop.Client.csproj", "{3AA3E3DC-79AB-491A-B5A1-8C231A78FE29}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raft_Shop.Client", "Raft_Shop\Raft_Shop.Client\Raft_Shop.Client.csproj", "{3AA3E3DC-79AB-491A-B5A1-8C231A78FE29}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
