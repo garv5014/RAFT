@@ -44,6 +44,20 @@
     }
 </div>
 
+<div class="row mt-4">
+    <div class="col-md-6">
+        <input @bind="checkOrderId" class="form-control" placeholder="Order ID" />
+    </div>
+    <div class="col-md-6">
+        <button @onclick="CheckOrderStatus" class="btn btn-info">Check Order</button>
+    </div>
+</div>
+<div class="row mt-2">
+    <div class="col">
+        <p>@orderStatusMessage</p>
+    </div>
+</div>
+
 @code {
     private List<Product> products = new List<Product>
     {
@@ -55,6 +69,8 @@
     };
     private Dictionary<string, int> order = new Dictionary<string, int>();
     private string username = string.Empty;
+    private string checkOrderId;
+    private string orderStatusMessage = "Enter an order ID to check its status.";
 
     private void AddToOrder(Product product)
     {
@@ -83,9 +99,36 @@
     private async Task SubmitOrder()
     {
         var orderId = Guid.NewGuid().ToString(); // Generate a new Order ID
-        await UserService.CreateOrderAsync(orderId, order, username);
+        var success = await UserService.CreateOrderAsync(orderId, order, username);
+        if (success)
+        {
+            orderStatusMessage = "Order submitted successfully!";
+        }
+        else
+        {
+            orderStatusMessage = "Failed to submit the order.";
+        }
         order.Clear(); // Clear the order once submitted
         username = string.Empty; // Optionally clear the username
+    }
+
+    private async Task CheckOrderStatus()
+    {
+        if (string.IsNullOrWhiteSpace(checkOrderId))
+        {
+            orderStatusMessage = "Please enter a valid order ID.";
+            return;
+        }
+
+        var status = await UserService.GetOrderStatusAsync(checkOrderId);
+        if (status != null)
+        {
+            orderStatusMessage = $"Order Status: {status.Status}";
+        }
+        else
+        {
+            orderStatusMessage = "Order not found or unable to retrieve status.";
+        }
     }
 
     private bool CanSubmit => order.Any() && !string.IsNullOrWhiteSpace(username);
@@ -95,3 +138,4 @@
         public string Name { get; set; }
     }
 }
+

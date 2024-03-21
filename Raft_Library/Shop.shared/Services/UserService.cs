@@ -165,8 +165,8 @@ public class UserService : IUserService
         {
             return null;
         }
-
-        return JsonHelper.Deserialize<OrderStatus>(versionedValue.Value);
+        var status = versionedValue.Value;
+        return new OrderStatus { OrderId = orderId, Status = status };
     }
 
     public async Task<OrderInfo> GetOrderInfoAsync(string orderId)
