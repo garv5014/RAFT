@@ -99,7 +99,7 @@ services:
             aspnetcore_environment: Development
             GatewayAddress: 'http://garrett_gateway:8080'
         depends_on:
-            - swag
+            - garrett_swag
         profiles:
           - manager
         networks:
