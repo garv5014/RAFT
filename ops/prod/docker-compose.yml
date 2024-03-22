@@ -27,7 +27,7 @@ services:
         profiles:
             - manager
         networks:
-            - g-overlay-worker
+            - g-overlay
     raftnode2:
         <<: *raftnode_base
         container_name: garrett_raftnode2
@@ -111,6 +111,8 @@ services:
         restart: always
         volumes:
             - ./configs/otel-collector-config.yml:/etc/otelcol-contrib/config.yml
+        profiles:
+          - manager
         networks:
           - g-overlay
 
@@ -124,6 +126,8 @@ services:
         # ports:
         #   # Port used for the Zipkin UI and HTTP Api
         #   - 9411:9411
+        profiles:
+          - manager
         networks:
             - g-overlay
 
@@ -137,6 +141,8 @@ services:
         restart: always
         volumes:
             - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+        profiles:
+          - manager
         networks:
             - g-overlay
     garrett_grafana:
@@ -156,6 +162,8 @@ services:
             - ./dashboards:/var/lib/grafana/dashboards
             - ./configs/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
             - ./configs/grafana.ini:/etc/grafana/grafana.ini
+        profiles:
+          - manager
         networks:
             - g-overlay
     garrett_loki:
@@ -167,6 +175,8 @@ services:
             - ./configs/loki.yml:/etc/loki/local-config.yml
         # ports:
         #   - "3100:3100"
+        profiles:
+          - manager
         networks:
             - g-overlay
 
