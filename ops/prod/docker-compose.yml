@@ -95,7 +95,7 @@ services:
             dockerfile: 'Raft_Shop/Raft_Shop/Dockerfile'
         environment:
             TZ: America/Denver
-            COLLECTORURL: 'http://otel_collector:4317'
+            COLLECTORURL: 'http://garrett_otel_collector:4317'
             aspnetcore_environment: Development
             GatewayAddress: 'http://garrett_gateway:8080'
         depends_on:
