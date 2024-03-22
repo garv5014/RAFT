@@ -18,7 +18,7 @@ x-raftnode-env: &raftnode_env
 
 
 services: 
-    raftnode1:
+    garrett_raftnode1:
         <<: *raftnode_base
         container_name: garrett_raftnode1
         environment: 
@@ -28,7 +28,7 @@ services:
             - manager
         networks:
             - g-overlay-worker
-    raftnode2:
+    garrett_raftnode2:
         <<: *raftnode_base
         container_name: garrett_raftnode2
         environment: 
@@ -38,7 +38,7 @@ services:
             - manager
         networks:
             - g-overlay
-    raftnode3:
+    garrett_raftnode3:
         <<: *raftnode_base
         container_name: garrett_raftnode3
         environment: 
@@ -64,7 +64,7 @@ services:
         networks:
           - g-overlay
             
-    swag:
+    garrrett_swag:
         image: lscr.io/linuxserver/swag
         container_name: garrett_Raftshop_proxy
         cap_add:
