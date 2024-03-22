@@ -64,7 +64,7 @@ services:
         networks:
           - g-overlay
             
-    garrrett_swag:
+    garrett_swag:
         image: lscr.io/linuxserver/swag
         container_name: garrett_Raftshop_proxy
         cap_add:
