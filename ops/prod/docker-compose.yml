@@ -18,7 +18,7 @@ x-raftnode-env: &raftnode_env
 
 
 services: 
-    garrett_raftnode1:
+    raftnode1:
         <<: *raftnode_base
         container_name: garrett_raftnode1
         environment: 
@@ -28,7 +28,7 @@ services:
             - manager
         networks:
             - g-overlay-worker
-    garrett_raftnode2:
+    raftnode2:
         <<: *raftnode_base
         container_name: garrett_raftnode2
         environment: 
@@ -38,7 +38,7 @@ services:
             - manager
         networks:
             - g-overlay
-    garrett_raftnode3:
+    raftnode3:
         <<: *raftnode_base
         container_name: garrett_raftnode3
         environment: 
