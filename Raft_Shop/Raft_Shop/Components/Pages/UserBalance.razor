@@ -68,14 +68,13 @@
     {
         if (!string.IsNullOrWhiteSpace(username) && amount > 0)
         {
-            var success = await UserService.WithdrawBalanceAsync(username, amount);
-            if (success)
+            try
             {
-                await GetBalance(); // Update balance display
+               await UserService.WithdrawBalanceAsync(username, amount);
             }
-            else
+            catch (InvalidOperationException)
             {
-                // Handle withdrawal failure (e.g., insufficient funds)
+                balance = 0m;
             }
         }
     }

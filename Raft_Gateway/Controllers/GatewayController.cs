@@ -60,14 +60,12 @@ public class GatewayController : ControllerBase
         _logger.LogInformation("StrongGet called with key: {key}", key);
         var leaderAddress = FindLeaderAddress();
         _logger.LogInformation($"Leader address: {leaderAddress}/api/node/strongget?key={key}");
-        var value = await client.GetFromJsonAsync<VersionedValue<string>>(
-            $"{leaderAddress}/api/node/strongget?key={key}"
-        );
-        if (value == null)
+        var value = await client.GetAsync($"{leaderAddress}/api/node/strongget?key={key}");
+        if (!value.IsSuccessStatusCode)
         {
             return StatusCode(404, "Value not found in leader node.");
         }
-        return value;
+        return await value?.Content?.ReadFromJsonAsync<VersionedValue<string>>();
     }
 
     [HttpGet("EventualGet")]

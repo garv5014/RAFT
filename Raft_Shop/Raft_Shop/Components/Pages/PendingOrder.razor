@@ -1,6 +1,7 @@
 ﻿@page "/pending-orders"
 @using Raft_Library.Shop.shared
 @inject IUserService UserService
+@inject IInventoryService ShopInventoryService
 @rendermode InteractiveServer
 
 <h3>Pending Orders</h3>
@@ -19,17 +20,18 @@ else
     <div class="row">
         @foreach (var order in pendingOrders)
         {
-            <div class="col-sm-4 mb-4">
+            <div class="col-md-6 col-lg-4 col-sm-12 mb-4">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title">Order for @order.Purchaser</h5>
+                        <h5 class="card-title">Order Id @order.Id</h5>
                         <p class="card-text">
                             @foreach (var item in order.Products)
                             {
                                 <div>@item.Key - Quantity: @item.Value ($@item.Value)</div>
                             }
                         </p>
-                        <button class="btn btn-primary">Process</button>
+                        <button class="btn btn-primary" @onclick="() => ProcessOrder(order?.Id)"> Process </button>
                     </div>
                 </div>
             </div>
@@ -44,5 +46,51 @@ else
     {
         var orders = await UserService.GetAllPendingOrdersAsync();
         pendingOrders = orders.ToList();
+    }
+
+    public async Task ProcessOrder(string orderId)
+    {
+        var saga = new Saga();
+        var orderInfo = await UserService.GetOrderInfoAsync(orderId);
+        if (orderInfo == null) return;
+
+        // Calculate total price assuming each item is $1
+        var totalPrice = orderInfo.Products.Values.Sum();
+
+        saga.AddStep(
+            operation: () => UserService.RemoveOrderFromPendingAsync(orderId),
+            compensation: () => UserService.UpdateOrderStatusAsync(orderId, OrderStatusEnum.Rejected)
+        );
+        // update user balance
+        saga.AddStep(
+            operation: () =>
+                UserService.WithdrawBalanceAsync(orderInfo.Purchaser, totalPrice), 
+            compensation: () => {return null;}
+        );
+
+        // update item stock
+        foreach (var item in orderInfo.Products)
+        {
+            saga.AddStep(
+                operation: () => ShopInventoryService.RemoveItemFromStockAsync(item.Key, item.Value),
+                compensation: () => ShopInventoryService.AddItemToStockAsync(item.Key, item.Value) // Undo by adding back the quantity
+            );
+        }
+
+        // update vendor balance
+        saga.AddStep(
+            operation: () => UserService.DepositBalanceAsync("vendor", totalPrice),
+            compensation: () => UserService.WithdrawBalanceAsync("vendor", totalPrice)
+        );
+
+
+        saga.AddStep(
+            operation: () => UserService.UpdateOrderStatusAsync(orderId, OrderStatusEnum.Completed),
+            compensation: () => UserService.UpdateOrderStatusAsync(orderId, OrderStatusEnum.Rejected) 
+        );
+
+        await saga.ExecuteAsync();
+
+        await OnInitializedAsync();
     }
 }

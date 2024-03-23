@@ -8,14 +8,14 @@
 <div class="row">
     @foreach (var product in products)
     {
-        <div class="col-md-4 mb-4">
+        <div class="col-sm-6 col-md-4 mb-4 text-center">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">@product.Name</h5>
                     <p class="card-text">Price: $@product.Price</p>
                     <p class="card-text">Stock: @product.Stock</p>
-                    <button class="btn btn-primary" @onclick="() => AddToStock(product)">Add Stock</button>
-                    <button class="btn btn-danger" @onclick="() => RemoveFromStock(product)">Remove Stock</button>
+                    <button class="btn btn-primary mr-2 my-2" @onclick="() => AddToStock(product)">+</button>
+                    <button class="btn btn-danger ml-2 my-2" @onclick="() => RemoveFromStock(product)">-</button>
                 </div>
             </div>
         </div>
@@ -36,7 +36,15 @@
     {
         foreach (var product in products)
         {
-            product.Stock = await InventoryService.GetItemStockAsync(product.Name);
+            try
+            {
+                product.Stock = await InventoryService.GetItemStockAsync(product.Name);
+
+            }
+            catch (InvalidOperationException)
+            {
+                product.Stock = 0;
+            }
         }
     }
 
@@ -51,9 +59,17 @@
 
     private async Task RemoveFromStock(Product product)
     {
-        if (await InventoryService.RemoveItemFromStockAsync(product.Name, 1))
+        try
         {
-            product.Stock = Math.Max(0, product.Stock - 1); // Prevent negative stock display
+            if (await InventoryService.RemoveItemFromStockAsync(product.Name, 1))
+            {
+                    product.Stock = Math.Max(0, product.Stock - 1); // Prevent negative stock display
+
+            }
+        }
+        catch (Exception)
+        {
+            product.Stock = 0;
         }
         StateHasChanged();
     }

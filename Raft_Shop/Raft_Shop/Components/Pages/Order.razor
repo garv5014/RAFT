@@ -16,7 +16,7 @@
     <div class="row">
         @foreach (var product in products)
         {
-            <div class="col-md-4 mb-4">
+            <div class="col-sm-6 col-md-4 mb-4">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title">@product.Name</h5>
@@ -39,17 +39,17 @@
             {
                 <div>@item.Key - Quantity: @item.Value</div>
             }
-            <button @onclick="SubmitOrder" class="btn btn-success mt-2" disabled="@(!CanSubmit)">Submit Order</button>
+            <button @onclick="SubmitOrder" class="btn btn-success my-2" disabled="@(!CanSubmit)">Submit Order</button>
         </div>
     }
 </div>
 
 <div class="row mt-4">
     <div class="col-md-6">
-        <input @bind="checkOrderId" class="form-control" placeholder="Order ID" />
+        <input @bind="checkOrderId" class="form-control my-2" placeholder="Order ID" />
     </div>
     <div class="col-md-6">
-        <button @onclick="CheckOrderStatus" class="btn btn-info">Check Order</button>
+        <button @onclick="CheckOrderStatus" class="btn btn-info my-2">Check Order</button>
     </div>
 </div>
 <div class="row mt-2">
@@ -132,10 +132,5 @@
     }
 
     private bool CanSubmit => order.Any() && !string.IsNullOrWhiteSpace(username);
-
-    public class Product
-    {
-        public string Name { get; set; }
-    }
 }
 

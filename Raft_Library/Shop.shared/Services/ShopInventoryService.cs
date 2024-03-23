@@ -36,19 +36,24 @@ public class ShopInventoryService : IInventoryService
 
     public async Task<int> GetItemStockAsync(string itemId)
     {
-        var itemStock = await gatewayService.StrongGet(itemId); // or EventualGet for eventual consistency
-        return itemStock != null ? int.Parse(itemStock?.Value) : 0;
+        var itemStock = await gatewayService.StrongGet(itemId);
+        if (itemStock == null)
+            throw new InvalidOperationException("Item not found");
+        return int.Parse(itemStock.Value);
     }
 
     public async Task<bool> RemoveItemFromStockAsync(string itemId, int quantity)
     {
-        var itemStock = await gatewayService.StrongGet(itemId); // or EventualGet for eventual consistency
+        var itemStock = await gatewayService.StrongGet(itemId);
         if (itemStock == null)
-            return false;
+            throw new InvalidOperationException("Item not found");
 
         int currentStock = int.Parse(itemStock.Value);
-        int newStock = Math.Max(0, currentStock - quantity); // Ensure stock doesn't go below zero
+
+        int newStock = Math.Max(0, currentStock - quantity);
         var updated = await TryUpdateStockAsync(itemId, newStock, itemStock.Value);
+        if (currentStock < quantity)
+            throw new InvalidOperationException("Not enough stock");
         return updated;
     }
 

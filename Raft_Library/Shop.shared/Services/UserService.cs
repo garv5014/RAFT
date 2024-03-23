@@ -42,19 +42,27 @@ public class UserService : IUserService
     public async Task<bool> WithdrawBalanceAsync(string userId, decimal amountChange)
     {
         var userBalanceValue = await gateway.StrongGet($"user-balance-{userId}");
-        if (userBalanceValue == null || decimal.Parse(userBalanceValue.Value) <= 0)
-        {
-            return false;
-        }
 
-        decimal currentBalance = decimal.Parse(userBalanceValue.Value);
-        if (currentBalance - amountChange < 0)
+        decimal currentBalance;
+        if (userBalanceValue != null)
         {
-            return false;
+            currentBalance = decimal.Parse(userBalanceValue.Value);
         }
-
+        else
+        {
+            throw new InvalidOperationException("User has no balance");
+        }
         decimal newBalance = currentBalance - amountChange;
 
+        if (userBalanceValue == null)
+        {
+            throw new InvalidOperationException("User has no balance");
+        }
+
+        if (currentBalance - amountChange < 0)
+        {
+            throw new InvalidOperationException("Insufficient balance");
+        }
         var result = await gateway.CompareAndSwap(
             new CompareAndSwapRequest
             {
@@ -166,7 +174,7 @@ public class UserService : IUserService
             return null;
         }
         var status = versionedValue.Value;
-        return new OrderStatus { OrderId = orderId, Status = status };
+        return new OrderStatus { Id = orderId, Status = status };
     }
 
     public async Task<OrderInfo> GetOrderInfoAsync(string orderId)
@@ -191,9 +199,98 @@ public class UserService : IUserService
     public async Task<IEnumerable<OrderInfo>> GetAllPendingOrdersAsync()
     {
         var pendingOrderIds = await GetPendingOrdersAsync();
-        var pendingOrdersInfoTasks = pendingOrderIds.Select(id => GetOrderInfoAsync(id));
+        var pendingOrdersInfoTasks = pendingOrderIds.Select(
+            async (id) =>
+            {
+                var order = await GetOrderInfoAsync(id);
+                return new OrderInfo
+                {
+                    Id = id,
+                    Purchaser = order.Purchaser,
+                    Products = order.Products
+                };
+            }
+        );
         var pendingOrdersInfo = await Task.WhenAll(pendingOrdersInfoTasks);
 
         return pendingOrdersInfo.Where(info => info != null);
+    }
+
+    public async Task<bool> UpdateOrderStatusAsync(string orderId, OrderStatusEnum status)
+    {
+        var versionedValue = await gateway.StrongGet($"order-status {orderId}");
+        var currentStatus = versionedValue?.Value;
+
+        var newStatus = status.ToString();
+        if (currentStatus != "pending")
+        {
+            throw new InvalidOperationException("Order status can only be updated from 'pending'");
+        }
+
+        if (status == OrderStatusEnum.Completed)
+        {
+            var processorId = Guid.NewGuid().ToString();
+            newStatus = $"processed-by {processorId}";
+        }
+
+        if (status == OrderStatusEnum.Rejected)
+        {
+            newStatus = "rejected";
+        }
+
+        var result = await gateway.CompareAndSwap(
+            new CompareAndSwapRequest
+            {
+                Key = $"order-status {orderId}",
+                OldValue = currentStatus,
+                NewValue = newStatus
+            }
+        );
+
+        return result.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> RemoveOrderFromPendingAsync(string orderId)
+    {
+        const int maxRetries = 5;
+        int currentRetry = 0;
+        bool success = false;
+
+        while (!success && currentRetry < maxRetries)
+        {
+            var versionedValue = await gateway.StrongGet("pending-orders");
+            if (versionedValue == null || string.IsNullOrEmpty(versionedValue.Value))
+            {
+                return false;
+            }
+
+            var pendingOrders = JsonSerializer.Deserialize<List<string>>(versionedValue.Value);
+            if (!pendingOrders.Contains(orderId))
+            {
+                return true;
+            }
+
+            pendingOrders.Remove(orderId);
+
+            var updatedPendingOrdersJson = JsonSerializer.Serialize(pendingOrders);
+
+            var compareAndSwapResult = await gateway.CompareAndSwap(
+                new CompareAndSwapRequest
+                {
+                    Key = "pending-orders",
+                    OldValue = versionedValue.Value,
+                    NewValue = updatedPendingOrdersJson
+                }
+            );
+
+            success = compareAndSwapResult.IsSuccessStatusCode;
+            if (!success)
+            {
+                await Task.Delay(100);
+                currentRetry++;
+            }
+        }
+
+        return success;
     }
 }
